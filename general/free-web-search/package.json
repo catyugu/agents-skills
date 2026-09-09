@@ -1,0 +1,13 @@
+{
+	"name": "free-web-search",
+	"version": "1.0.0",
+	"type": "module",
+	"description": "Free, unlimited web search via a rotating chain of open-source / community-run engines (SearXNG public instances, Mwmbl, Bing fallback) plus specialized sources (GitHub, arXiv, Hacker News, Wikipedia, Marginalia)",
+	"license": "MIT",
+	"dependencies": {
+		"@mozilla/readability": "^0.6.0",
+		"jsdom": "^27.0.1",
+		"turndown": "^7.2.2",
+		"turndown-plugin-gfm": "^1.0.2"
+	}
+}

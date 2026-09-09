@@ -1,0 +1,4 @@
+interface:
+  display_name: "AutoCOMSOL"
+  short_description: "COMSOL Java batch simulation reference"
+  default_prompt: "Use $autocomsol to design and validate a new COMSOL Java batch simulation case."
