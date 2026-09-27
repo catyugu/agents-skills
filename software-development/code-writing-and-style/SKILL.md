@@ -2,7 +2,7 @@
 name: code-writing-and-style
 description: Karpathy coding principles — think before coding, simplicity, surgical changes, goal-driven execution.
 category: development
-version: "1.3"
+version: "1.4"
 author: "Agnes"
 license: "MIT"
 metadata:
@@ -18,6 +18,8 @@ Load this skill when:
   principles (think first, simplicity, surgical changes, goal-driven work)
 - Reviewing your own or others' code for these meta-level habits
 - You need the mindset principles that apply regardless of language
+- You are about to add an abstraction, layer, or indirection and need the
+  rules that say when it is not justified
 
 For per-language naming/formatting/style conventions (C++, Python, Rust, Go, Java,
 JS/TS, C#, C, Bash, Markdown), load the `language-style-guide` skill instead — this
@@ -28,7 +30,7 @@ formatted.
 
 # Karpathy-style Coding Principles
 
-Four behavioral guidelines to reduce common LLM coding mistakes. Tradeoff: bias
+Five behavioral guidelines to reduce common LLM coding mistakes. Tradeoff: bias
 toward caution over speed.
 
 ## 1. Think Before Coding
@@ -64,3 +66,24 @@ toward caution over speed.
   - "Fix the bug" → "Write a test that reproduces it, then make it pass"
   - "Refactor X" → "Ensure tests pass before and after"
 - For multi-step tasks, state a brief plan with verification points.
+
+## 5. Abstraction Discipline
+
+The concrete form of section 2. Apply it while writing, and again in the
+simplification pass before calling the work done.
+
+- Prefer the simplest implementation that makes the business logic explicit.
+- Do not introduce abstractions for hypothetical future requirements.
+- Do not introduce an interface unless there are multiple meaningful
+  implementations or a real dependency boundary.
+- Do not introduce factories, registries, managers, providers, or plugin
+  systems without a concrete present need.
+- Prefer plain functions and value types over class hierarchies.
+- Prefer data tables over polymorphism when differences are primarily
+  configuration.
+- Keep core business decisions visible in control flow.
+- Avoid pass-through layers.
+- Every abstraction must justify what current complexity it removes.
+- Prefer some duplication over a premature or incorrect abstraction.
+- After implementation, perform a simplification pass and remove unnecessary
+  abstractions.
