@@ -115,3 +115,11 @@ After drafting, verify:
 - [ ] Consistent terminology
 - [ ] Concrete examples included
 - [ ] References one level deep
+
+## Where this fits
+
+Generic authoring process only. In the Hermes profile tree, in-repo `SKILL.md`
+files carry extra conventions (frontmatter fields, `platforms:` gating, hub
+provenance, external dirs) - see the `hermes-agent-skill-authoring` skill.
+Auditing or consolidating an existing library (tiers, duplicates, dead weight)
+is a different job - see `agents-skills-library`.

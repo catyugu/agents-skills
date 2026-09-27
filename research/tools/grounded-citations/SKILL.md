@@ -56,7 +56,9 @@ Override per task with `--ledger <path>` or `HERMES_CITATION_LEDGER`.
 ## How to Run
 
 ```bash
-S=~/.hermes/skills/research/grounded-citations/scripts/sources.py
+# resolve from wherever this skill is loaded: bundled -> $HERMES_HOME/skills/research/grounded-citations,
+# external -> ~/.agents/skills/research/tools/grounded-citations
+S=~/.agents/skills/research/tools/grounded-citations/scripts/sources.py
 
 python "$S" reset                                  # start a clean ledger
 python "$S" add https://example.com/a --title "A"  # prints: [1]
@@ -140,6 +142,10 @@ with every claim attributed to the platform it came from:
 | Video | `youtube-content` | walkthroughs, demos, talks |
 | Code | `terminal` with `gh search repos` / `gh search issues` | implementations, open bugs |
 | X/Twitter | `xurl` (needs API access) | announcements, developer chatter |
+
+The `reddit-reading` and `rss-feeds` skills are optional. If absent, install with
+`hermes skills install official/social-media/reddit-reading` or
+`hermes skills install official/research/rss-feeds` before using them.
 
 Register every URL from every route in the ledger as it arrives (step ②). Keep
 opinion and measurement apart: a Reddit thread is evidence that users *report*
