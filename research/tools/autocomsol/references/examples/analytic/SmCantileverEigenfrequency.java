@@ -7,8 +7,8 @@ public class SmCantileverEigenfrequency {
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
         String comp = "comp1";
-        double L = 1.5;    // 梁长
-        double b = 0.1;    // 方形截面边长, b=h → 两个一阶弯曲模态退化
+        double L = 1.5; // 梁长
+        double b = 0.1; // 方形截面边长, b=h → 两个一阶弯曲模态退化
         double E = 200e9, nu = 0.3, rho = 7850;
 
         model.param().set("L_b", L + "[m]", "梁长");

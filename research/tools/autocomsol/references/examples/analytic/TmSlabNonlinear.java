@@ -20,14 +20,13 @@ import com.comsol.model.util.ModelUtil;
  *
  * <p>本机证据: - 非线性材料属性: propertyGroup("def").set("thermalconductivity",
  *   "k0*(1+beta*(T-Tref))") 直接写表达式 - Dirichlet BC: TemperatureBoundary +
- *   T0_src=userdef + T0 - 面选择: faceParamRange + faceX 采样面心, 按 x 坐标分类
+ *   T0 (T0_src 默认 userdef) - 面选择: faceParamRange + faceX 采样面心, 按 x 坐标分类
  *
  * <p>验证在 scripts/verifications/analytic/tm_slab_nonlinear.py。
  * 运行: python scripts/run.py all TmSlabNonlinear <run-dir>
  * 参数: args[0]=mph 保存路径, args[1]=CSV 导出路径
  */
 public class TmSlabNonlinear {
-
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
 
@@ -69,13 +68,11 @@ public class TmSlabNonlinear {
         // 左端: Dirichlet T=T1
         model.component(comp).physics("ht").create("temp1", "TemperatureBoundary", 2);
         model.component(comp).physics("ht").feature("temp1").selection().set(xMinus);
-        model.component(comp).physics("ht").feature("temp1").set("T0_src", "userdef");
         model.component(comp).physics("ht").feature("temp1").set("T0", "T1");
 
         // 右端: Dirichlet T=T2
         model.component(comp).physics("ht").create("temp2", "TemperatureBoundary", 2);
         model.component(comp).physics("ht").feature("temp2").selection().set(xPlus);
-        model.component(comp).physics("ht").feature("temp2").set("T0_src", "userdef");
         model.component(comp).physics("ht").feature("temp2").set("T0", "T2");
 
         // 网格: 自由四面体

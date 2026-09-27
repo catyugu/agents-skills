@@ -32,7 +32,7 @@ approximations and a downgrade trigger:
 
 - **clean-zone pointwise comparison** against an analytic profile, with boundary layers
   excluded (Saint-Venant end effects, hole-edge singularities, load-edge corners) —
-  validated on `SmCylinderAxialStationary`, `SmPlateHoleStationary`.
+  validated on `SmPlateHoleStationary`.
 - **shape-ratio comparison** where the FE base value is fitted rather than hardcoded,
   so only the analytic profile is tested — validated on `TFinArrayStationary`
   (isolated-fin cosh profile; θ_base fitted from the root plane). Explicit downgrade

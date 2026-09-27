@@ -16,8 +16,8 @@ import com.comsol.model.util.ModelUtil;
  * scripts/verifications/analytic/t_ring_transient.py。
  *
  * <p>本机证据（COMSOL 6.2 官方示例 heating_circuit.mph 解包）: - 对流边界特征: HeatFluxBoundary, 参数
- * HeatFluxType='ConvectiveHeatFlux', minput_temperature_src='userdef', minput_temperature,
- * HeatTransferCoefficientType='UserDef', h - 瞬态研究: study("std1").create("time", "TimeDependent");
+ * HeatFluxType='ConvectiveHeatFlux', Text (环境温度; Text_src 仅允许 'userdef'),
+ * h (HeatTransferCoefficientType 默认 UserDef) - 瞬态研究: study("std1").create("time", "TimeDependent");
  * study("std1").feature("time").set("tlist", "range(...)") - 初值: ht.init 或
  * physics("ht").feature("init1").set("T", ...)
  *
@@ -25,7 +25,6 @@ import com.comsol.model.util.ModelUtil;
  * 保存路径, args[1]=CSV 导出路径
  */
 public class TRingTransient {
-
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
 
@@ -52,16 +51,8 @@ public class TRingTransient {
         model.component(comp).geom("geom1").feature("c_in").set("r", "r_in");
         model.component(comp).geom("geom1").feature("c_in").set("pos", new double[] {0, 0});
         model.component(comp).geom("geom1").create("diff1", "Difference");
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input")
-                .set(new String[] {"c_out"});
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input2")
-                .set(new String[] {"c_in"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input").set(new String[] {"c_out"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input2").set(new String[] {"c_in"});
         model.component(comp).geom("geom1").run();
 
         // 材料: 热导率/密度/比热容（Common 材料 def 属性组。
@@ -69,18 +60,9 @@ public class TRingTransient {
         // 证据） 注意: density/heatcapacity 若引用全局参数 rho/Cp 会与 physics
         // 特征同名 参数冲突解析成 0 → 直接内联数值）
         model.component(comp).material().create("mat1", "Common");
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("thermalconductivity", new String[][] {{"k"}});
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("density", new String[][] {{"rho_val"}});
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("heatcapacity", new String[][] {{"Cp_val"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("thermalconductivity", new String[][] {{"k"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("density", new String[][] {{"rho_val"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("heatcapacity", new String[][] {{"Cp_val"}});
 
         // 物理场: HeatTransfer（本机纯固体传热接口）
         model.component(comp).physics().create("ht", "HeatTransfer", "geom1");
@@ -101,25 +83,13 @@ public class TRingTransient {
         // 内环: TemperatureBoundary T=T1（Dirichlet）
         model.component(comp).physics("ht").create("temp_in", "TemperatureBoundary", 1);
         model.component(comp).physics("ht").feature("temp_in").selection().set(inner);
-        model.component(comp).physics("ht").feature("temp_in").set("T0_src", "userdef");
         model.component(comp).physics("ht").feature("temp_in").set("T0", "T1");
 
         // 外环: HeatFluxBoundary 对流换热（Robin）→ 含对流换热 BC
         model.component(comp).physics("ht").create("hf_out", "HeatFluxBoundary", 1);
         model.component(comp).physics("ht").feature("hf_out").selection().set(outer);
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_out")
-                .set("HeatFluxType", "ConvectiveHeatFlux");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_out")
-                .set("minput_temperature_src", "userdef");
-        model.component(comp).physics("ht").feature("hf_out").set("minput_temperature", "Tinf");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_out")
-                .set("HeatTransferCoefficientType", "UserDef");
+        model.component(comp).physics("ht").feature("hf_out").set("HeatFluxType", "ConvectiveHeatFlux");
+        model.component(comp).physics("ht").feature("hf_out").set("Text", "Tinf");
         model.component(comp).physics("ht").feature("hf_out").set("h", "h_conv");
 
         // 网格: 自由三角形，中等偏细（瞬态精度敏感）
@@ -131,12 +101,9 @@ public class TRingTransient {
         // 时间点: 0,100,500,1500,3000s
         model.study().create("std1");
         model.study("std1").create("time", "Transient");
-        model.study("std1")
-                .feature("time")
-                .set(
-                        "tlist",
-                        "range(0,100[s],500[s]) range(500,1000,1500[s]) "
-                                + "range(1500,1500,3000[s])");
+        model.study("std1").feature("time").set("tlist",
+                "range(0,100[s],500[s]) range(500,1000,1500[s]) "
+                        + "range(1500,1500,3000[s])");
         model.study("std1").createAutoSequences("time");
         model.study("std1").run();
 

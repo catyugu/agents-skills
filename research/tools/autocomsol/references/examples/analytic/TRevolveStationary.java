@@ -7,7 +7,7 @@ import com.comsol.model.util.ModelUtil;
  * TRevolveStationary.java — 实验 TRevolve: 3D 双层圆环稳态传热（Revolve 旋转体几何, 双材料）
  *
  * <p>几何 (Revolve 旋转体): 两个 xz 工作平面各含一个矩形截面 (wp1: r∈[r_in,r_mid], wp2:
- * r∈[r_mid,r_out], 厚度均为 t), 各自 Revolve 360° 成中空圆柱壳, Union(intbnd=on) 合并 → 内环壳(A) +
+ * r∈[r_mid,r_out], 厚度均为 t), 各自 Revolve 360° 成中空圆柱壳, Union (intbnd 默认 on) 合并 → 内环壳(A) +
  * 外环壳(B) 两个独立域。
  *
  * <p>物理: 纯固体传热 HeatTransfer (ht), 稳态 Stationary。
@@ -30,7 +30,6 @@ import com.comsol.model.util.ModelUtil;
  * 参数: args[0]=mph 保存路径, args[1]=CSV 导出路径
  */
 public class TRevolveStationary {
-
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
 
@@ -51,7 +50,7 @@ public class TRevolveStationary {
         // 几何: 双层圆环（Revolve 旋转体）
         //  wp1: xz 平面矩形 [r_in..r_mid]×[t/2..t/2] → rev1 绕轴旋转 360° → 内环壳
         //  wp2: xz 平面矩形 [r_mid..r_out]×[t/2..t/2] → rev2 绕轴旋转 360° → 外环壳
-        //  Union(intbnd=on) → 内环 + 外环 两个独立域
+        //  Union (intbnd 默认 on) → 内环 + 外环 两个独立域
         model.component(comp).geom().create("geom1", 3);
 
         // wp1: 内环截面
@@ -86,10 +85,9 @@ public class TRevolveStationary {
         model.component(comp).geom("geom1").feature("rev2").selection("input").set(new String[] {"wp2"});
         model.component(comp).geom("geom1").feature("rev2").set("angtype", "full");
 
-        // Union: 合并两个旋转体, 保留内部界面 (intbnd=on → 两个独立域)
+        // Union: 合并两个旋转体, 保留内部界面 (intbnd 默认 on → 两个独立域)
         model.component(comp).geom("geom1").create("uni1", "Union");
         model.component(comp).geom("geom1").feature("uni1").selection("input").set(new String[] {"rev1", "rev2"});
-        model.component(comp).geom("geom1").feature("uni1").set("intbnd", "on");
         model.component(comp).geom("geom1").run();
 
         // 域识别（确定性, 不依赖试错）: 与 EcTCylinderStationary 同理,
@@ -123,16 +121,13 @@ public class TRevolveStationary {
         // 内壁: Dirichlet T=T0
         model.component(comp).physics("ht").create("temp_in", "TemperatureBoundary", 2);
         model.component(comp).physics("ht").feature("temp_in").selection().set(inner);
-        model.component(comp).physics("ht").feature("temp_in").set("T0_src", "userdef");
         model.component(comp).physics("ht").feature("temp_in").set("T0", "T0");
 
         // 外壁: Robin 对流换热 h=h_conv → Tinf
         model.component(comp).physics("ht").create("hf_out", "HeatFluxBoundary", 2);
         model.component(comp).physics("ht").feature("hf_out").selection().set(outer);
         model.component(comp).physics("ht").feature("hf_out").set("HeatFluxType", "ConvectiveHeatFlux");
-        model.component(comp).physics("ht").feature("hf_out").set("minput_temperature_src", "userdef");
-        model.component(comp).physics("ht").feature("hf_out").set("minput_temperature", "Tinf");
-        model.component(comp).physics("ht").feature("hf_out").set("HeatTransferCoefficientType", "UserDef");
+        model.component(comp).physics("ht").feature("hf_out").set("Text", "Tinf");
         model.component(comp).physics("ht").feature("hf_out").set("h", "h_conv");
 
         // 网格: 自由四面体

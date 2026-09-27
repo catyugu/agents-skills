@@ -47,6 +47,11 @@ python scripts/run.py sweep [--keys K1,K2] [--skip-pass] [--runs-root DIR]
   `runs/aggregate-summary.json` + `aggregate-summary.md`.
 - The case list is the single `REGISTRY` in `scripts/health_check.py` — do not keep a
   second copy elsewhere.
+- Decode the COMSOL tools' stdout/stderr with the host locale encoding
+  (`encoding=locale.getencoding(), errors="replace"`), not with a hard-coded UTF-8:
+  the native launchers print diagnostics in the console codepage (e.g. GBK on a Chinese
+  Windows install). Under a UTF-8 Python mode (`PYTHONUTF8=1`) a strict UTF-8 decode kills
+  the subprocess reader thread and the compile/batch diagnostics are lost silently.
 - `--skip-pass` re-runs only keys whose last health report was not PASS.
 - Exit code 0 iff every case PASSes; a single failing case does not abort the sweep.
 

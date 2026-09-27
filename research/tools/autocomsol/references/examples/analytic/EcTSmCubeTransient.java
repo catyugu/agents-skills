@@ -3,7 +3,7 @@ import com.comsol.model.Model;
 import com.comsol.model.util.ModelUtil;
 
 /**
- * EcTSmCubeTransient: 3D 立方体瞬态电→热→力耦合（含解析解, 几何不同于 EcTSmCylinderStationary 的圆柱）
+ * EcTSmCubeTransient: 3D 立方体瞬态电→热→力耦合（含解析解, 几何不同于 EcTCylinderStationary 的圆柱）
  *
  * <p>物理: 电流 (ConductiveMedia, ec) + 传热 (HeatTransfer, ht) + 固体力学 (SolidMechanics, solid)， 焦耳热经
  * ElectromagneticHeating 耦合 (ec→ht)，温度场经 ThermalExpansion 多物理场耦合 (ht→solid)。
@@ -30,7 +30,6 @@ import com.comsol.model.util.ModelUtil;
  * EcTSmCubeTransient <run-dir> args[0]=mph, args[1]=CSV
  */
 public class EcTSmCubeTransient {
-
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
 
@@ -55,46 +54,22 @@ public class EcTSmCubeTransient {
         // 几何: 3D 立方体 (中心原点)
         model.component(comp).geom().create("geom1", 3);
         model.component(comp).geom("geom1").create("blk1", "Block");
-        model.component(comp)
-                .geom("geom1")
-                .feature("blk1")
-                .set("size", new String[] {"L", "L", "L"});
-        model.component(comp)
-                .geom("geom1")
-                .feature("blk1")
-                .set("pos", new String[] {"-L/2", "-L/2", "-L/2"});
+        model.component(comp).geom("geom1").feature("blk1").set("size", new String[] {"L", "L", "L"});
+        model.component(comp).geom("geom1").feature("blk1").set("pos", new String[] {"-L/2", "-L/2", "-L/2"});
         model.component(comp).geom("geom1").run();
 
         GeomInfo gi = model.component(comp).geom("geom1");
 
         // 材料: 单材料 (σ/k/ρ/Cp/α; E,ν 在 lemm1 userdef)
         model.component(comp).material().create("mat1", "Common");
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("electricconductivity", new String[][] {{"sigma"}});
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("relpermittivity", new String[][] {{"1"}});
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("thermalconductivity", new String[][] {{"k"}});
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("density", new String[][] {{"rho_val"}});
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("heatcapacity", new String[][] {{"Cp_val"}});
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set(
-                        "thermalexpansioncoefficient",
-                        new String[] {"alpha", "0", "0", "0", "alpha", "0", "0", "0", "alpha"});
+        model.component(comp).material("mat1").propertyGroup("def").set(
+                "electricconductivity", new String[][] {{"sigma"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("relpermittivity", new String[][] {{"1"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("thermalconductivity", new String[][] {{"k"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("density", new String[][] {{"rho_val"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("heatcapacity", new String[][] {{"Cp_val"}});
+        model.component(comp).material("mat1").propertyGroup("def").set(
+                "thermalexpansioncoefficient", new String[] {"alpha", "0", "0", "0", "alpha", "0", "0", "0", "alpha"});
 
         // 物理场
         model.component(comp).physics().create("ec", "ConductiveMedia", "geom1");
@@ -125,36 +100,14 @@ public class EcTSmCubeTransient {
         // 热边界: x=±a 两端对流
         model.component(comp).physics("ht").create("hf_xp", "HeatFluxBoundary", 2);
         model.component(comp).physics("ht").feature("hf_xp").selection().set(xp);
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_xp")
-                .set("HeatFluxType", "ConvectiveHeatFlux");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_xp")
-                .set("minput_temperature_src", "userdef");
-        model.component(comp).physics("ht").feature("hf_xp").set("minput_temperature", "Tinf");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_xp")
-                .set("HeatTransferCoefficientType", "UserDef");
+        model.component(comp).physics("ht").feature("hf_xp").set("HeatFluxType", "ConvectiveHeatFlux");
+        model.component(comp).physics("ht").feature("hf_xp").set("Text", "Tinf");
         model.component(comp).physics("ht").feature("hf_xp").set("h", "h_conv");
 
         model.component(comp).physics("ht").create("hf_xm", "HeatFluxBoundary", 2);
         model.component(comp).physics("ht").feature("hf_xm").selection().set(xm);
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_xm")
-                .set("HeatFluxType", "ConvectiveHeatFlux");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_xm")
-                .set("minput_temperature_src", "userdef");
-        model.component(comp).physics("ht").feature("hf_xm").set("minput_temperature", "Tinf");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_xm")
-                .set("HeatTransferCoefficientType", "UserDef");
+        model.component(comp).physics("ht").feature("hf_xm").set("HeatFluxType", "ConvectiveHeatFlux");
+        model.component(comp).physics("ht").feature("hf_xm").set("Text", "Tinf");
         model.component(comp).physics("ht").feature("hf_xm").set("h", "h_conv");
 
         // 多物理场: 焦耳热 → 热; 热膨胀 → 力
@@ -166,10 +119,7 @@ public class EcTSmCubeTransient {
         model.component(comp).multiphysics("te1").selection().set(new int[] {1});
         model.component(comp).multiphysics("te1").set("Heat_physics", "ht");
         model.component(comp).multiphysics("te1").set("Solid_physics", "solid");
-        model.component(comp).multiphysics("te1").set("alpha_mat", "from_mat");
-        model.component(comp)
-                .multiphysics("te1")
-                .set("minput_strainreferencetemperature_src", "userdef");
+        model.component(comp).multiphysics("te1").set("minput_strainreferencetemperature_src", "userdef");
         model.component(comp).multiphysics("te1").set("minput_strainreferencetemperature", "Tref");
 
         // 约束: 两端 Roller (u_x=0), 刚体抑制
@@ -186,13 +136,10 @@ public class EcTSmCubeTransient {
         model.component(comp).mesh("mesh1").run();
         model.study().create("std1");
         model.study("std1").create("time", "Transient");
-        model.study("std1")
-                .feature("time")
-                .set(
-                        "tlist",
-                        "range(0,100[s],500[s]) range(500,500,1000[s]) "
-                                + "range(1000,1000,2000[s]) range(2000,2000,4000[s]) "
-                                + "range(4000,2000,6000[s])");
+        model.study("std1").feature("time").set("tlist",
+                "range(0,100[s],500[s]) range(500,500,1000[s]) "
+                        + "range(1000,1000,2000[s]) range(2000,2000,4000[s]) "
+                        + "range(4000,2000,6000[s])");
         model.study("std1").createAutoSequences("time");
         model.study("std1").run();
 
@@ -201,11 +148,8 @@ public class EcTSmCubeTransient {
         model.result().export().create("data1", "Data");
         model.result().export("data1").set("data", "dset1");
         model.result().export("data1").set("filename", csvOut);
-        model.result()
-                .export("data1")
-                .set(
-                        "expr",
-                        new String[] {"V", "T", "solid.sx", "solid.sy", "solid.sz", "solid.disp"});
+        model.result().export("data1").set(
+                "expr", new String[] {"V", "T", "solid.sx", "solid.sy", "solid.sz", "solid.disp"});
         model.result().export("data1").run();
 
         String outPath = args.length > 0 ? args[0] : "EcTSmCubeTransient.mph";

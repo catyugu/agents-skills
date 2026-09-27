@@ -16,14 +16,13 @@ import com.comsol.model.util.ModelUtil;
  *
  * <p>本机证据: - HeatTransferInSolids 报 Unknown physics interface（不可用） - HeatTransfer
  * 是本机纯固体传热接口（HeatProbe: tags solid1/init1/ins1/...） - 边界特征名
- * TemperatureBoundary（inline_induction_heater.mph 证据） - TemperatureBoundary 参数: T0_src=userdef,
+ * TemperatureBoundary（inline_induction_heater.mph 证据） - TemperatureBoundary 参数: T0 (T0_src 默认 userdef, 不必显式 set)
  * T0（本机 XML 证据） - 材料属性 thermalconductivity（finned_pipe.mph 证据）
  *
  * <p>模块需求: Heat Transfer 模块 运行: comsolcompile TCylinderStationary.java; comsolbatch -inputfile ...
  * -outputfile ... <savepath.mph> <csv-out> 参数: args[0]=mph 保存路径, args[1]=CSV 导出路径
  */
 public class TCylinderStationary {
-
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
 
@@ -44,10 +43,7 @@ public class TCylinderStationary {
         model.component(comp).geom("geom1").create("cyl_out", "Cylinder");
         model.component(comp).geom("geom1").feature("cyl_out").set("r", "r_out");
         model.component(comp).geom("geom1").feature("cyl_out").set("h", "H");
-        model.component(comp)
-                .geom("geom1")
-                .feature("cyl_out")
-                .set("pos", new double[] {0, 0, -0.1});
+        model.component(comp).geom("geom1").feature("cyl_out").set("pos", new double[] {0, 0, -0.1});
 
         model.component(comp).geom("geom1").create("cyl_in", "Cylinder");
         model.component(comp).geom("geom1").feature("cyl_in").set("r", "r_in");
@@ -55,24 +51,13 @@ public class TCylinderStationary {
         model.component(comp).geom("geom1").feature("cyl_in").set("pos", new double[] {0, 0, -0.1});
 
         model.component(comp).geom("geom1").create("diff1", "Difference");
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input")
-                .set(new String[] {"cyl_out"});
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input2")
-                .set(new String[] {"cyl_in"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input").set(new String[] {"cyl_out"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input2").set(new String[] {"cyl_in"});
         model.component(comp).geom("geom1").run();
 
         // 材料: 热导率（Common 材料 def 属性组）
         model.component(comp).material().create("mat1", "Common");
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("thermalconductivity", new String[][] {{"k"}});
+        model.component(comp).material("mat1").propertyGroup("def").set("thermalconductivity", new String[][] {{"k"}});
 
         // 物理场: HeatTransfer（本机纯固体传热接口）
         model.component(comp).physics().create("ht", "HeatTransfer", "geom1");
@@ -89,13 +74,11 @@ public class TCylinderStationary {
         // 内壁 TemperatureBoundary T=T1
         model.component(comp).physics("ht").create("temp_in", "TemperatureBoundary", 2);
         model.component(comp).physics("ht").feature("temp_in").selection().set(inner);
-        model.component(comp).physics("ht").feature("temp_in").set("T0_src", "userdef");
         model.component(comp).physics("ht").feature("temp_in").set("T0", "T1");
 
         // 外壁 TemperatureBoundary T=T2
         model.component(comp).physics("ht").create("temp_out", "TemperatureBoundary", 2);
         model.component(comp).physics("ht").feature("temp_out").selection().set(outer);
-        model.component(comp).physics("ht").feature("temp_out").set("T0_src", "userdef");
         model.component(comp).physics("ht").feature("temp_out").set("T0", "T2");
 
         // 网格

@@ -21,7 +21,6 @@ import com.comsol.model.util.ModelUtil;
  * -inputfile ... -outputfile ... <savepath.mph> <csv-out> 参数: args[0]=mph 保存路径, args[1]=CSV 导出路径
  */
 public class EcSquareStationary {
-
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
 
@@ -42,10 +41,8 @@ public class EcSquareStationary {
 
         // 材料: 电导率（Common 材料 def 属性组，本机 simple_resistor.mph 证据）
         model.component(comp).material().create("mat1", "Common");
-        model.component(comp)
-                .material("mat1")
-                .propertyGroup("def")
-                .set("electricconductivity", new String[][] {{"sigma"}});
+        model.component(comp).material("mat1").propertyGroup("def").set(
+                "electricconductivity", new String[][] {{"sigma"}});
 
         // 物理场: ConductiveMedia (本机 EC 接口)
         model.component(comp).physics().create("ec", "ConductiveMedia", "geom1");
@@ -130,8 +127,7 @@ public class EcSquareStationary {
     /** 断言边界存在且非空，否则抛异常。 */
     private static void requireBoundaries(String label, int[] edges) {
         if (edges == null || edges.length == 0) {
-            throw new IllegalStateException(
-                    "boundariesAt: no boundary matched for '" + label + "'");
+            throw new IllegalStateException("boundariesAt: no boundary matched for '" + label + "'");
         }
     }
 }

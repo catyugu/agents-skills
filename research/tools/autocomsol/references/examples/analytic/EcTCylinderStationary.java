@@ -6,19 +6,24 @@ import com.comsol.model.util.ModelUtil;
  * EcTCylinderStationary.java — 实验 ET2: 3D 同轴双材料电热耦合稳态（含热源, 全对流）
  *
  * <p>物理: 电流 (ConductiveMedia, ec) + 传热 (HeatTransfer, ht) + ElectromagneticHeating 耦合（焦耳热体积热源） 几何:
- * 3D 同轴圆柱（内芯 r1=0.15 + 外壳 r1<r<r2=0.3, L=1, 中心原点） → 两个独立域: 内芯域(导电) + 外壳域(绝缘) 电: 顶面 Terminal
- * V0=0.3V, 底面 Ground; 电流只流经内芯(外壳不导电) → 内芯轴向电场 E=V0/L 均匀, J=σ1·E 均匀, 焦耳热 Q1=σ1·(V0/L)² 均匀 热:
- * 侧面(r=r2) 与 顶/底面(z=±0.5) 全部对流换热 h=200 → T∞=293K（无绝热） 材料: 内芯 σ1=1e6 S/m, k1=15 W/mK; 外壳
+ * 3D 同轴圆柱（内芯 r1=0.15 + 外壳 r1<r<r2=0.3, L=2, 中心原点） → 两个独立域: 内芯域(导电) + 外壳域(绝缘) 电: 顶面 Terminal
+ * V0=0.6V, 底面 Ground; 电流只流经内芯(外壳不导电) → 内芯轴向电场 E=V0/L=0.3 V/m 均匀, J=σ1·E 均匀, 焦耳热 Q1=σ1·(V0/L)²
+ * 均匀 热: 侧面(r=r2) 与 顶/底面(z=±L/2) 全部对流换热 h=200 → T∞=293K（无绝热） 材料: 内芯 σ1=1e6 S/m, k1=15 W/mK; 外壳
  * σ2=1e-8(绝缘), k2=30 W/mK 密度/比热仅传热需; 研究: Stationary
  *
- * <p>解析解（中平面 z=0 是严格对称面, ∂T/∂z=0 精确成立, 端面散热不影响中平面）: 电流: V(z)=V0·(z+L/2)/L, E=V0/L, J=σ1·E,
+ * <p>解析解（中平面 z=0 的 1D 径向解, ∂T/∂z=0 要求端面散热对中平面可忽略 —— 这是一个**可测量的前提**,
+ * 不是自动成立）: 电流: V(z)=V0·(z+L/2)/L, E=V0/L, J=σ1·E,
  * Q1=σ1·(V0/L)²=9e4 W/m³ (内芯均匀热源) 稳态热径向 (含源内芯抛物线 + 无源外壳对数): T_c(r) = T∞ + Q1·r1²/(2·r2·h) +
  * Q1·r1²/(2·k2)·ln(r2/r1) + Q1·(r1²-r²)/(4·k1) T_o(r) = T∞ + Q1·r1²/(2·r2·h) +
  * Q1·r1²/(2·k2)·ln(r2/r) 界面 r1: 温度连续 + 热流连续; 外壁 r2: 对流平衡 验证在
  * scripts/verifications/analytic/ec_t_cylinder_stationary.py。
  *
+ * <p>L=2 的来由（实测, 2026-09-19）: L=1 (r2=0.3) 时端面轴向散热把中平面也拉低 —— 内芯中平面比 1D 径向解低
+ * 2.9~3.1 K (r→0 处最大), 恰好卡在 3 K 判据上; 加长到 L=2 (V0 同步加倍, E 与 Q1 不变) 后同一位置偏差降到
+ * 0.24~0.27 K, 判据才有真实余量。端面影响随 L 增大而衰减, 但不会消失。
+ *
  * <p>本机证据: - 电热耦合: multiphysics().create(..,"ElectromagneticHeating"), EMHeat_physics/Heat_physics
- * - 对流 BC: HeatFluxBoundary + ConvectiveHeatFlux + minput_temperature + h - 多材料:
+ * - 对流 BC: HeatFluxBoundary + ConvectiveHeatFlux + Text (环境温度) + h - 多材料:
  * material("matN").selection().set(domains) 分配域 - 域编号: GeomInfo.getVertexDomain()/getVertexCoord()
  * 由顶点坐标推断内芯/外壳 - 材料 def: electricconductivity/relpermittivity/thermalconductivity
  *
@@ -26,15 +31,18 @@ import com.comsol.model.util.ModelUtil;
  * 参数: args[0]=mph 保存路径, args[1]=CSV 导出路径
  */
 public class EcTCylinderStationary {
-
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
 
         // 参数（带单位）
+        // L 与 V0 成比例 (V0/L = 0.3 V/m) 以保持内芯电场与焦耳热不变: 加长圆柱只是让
+        // 端面对中平面的影响降到可忽略, 使"中平面为 1D 径向问题"这一解析解前提真正成立。
+        double L = 2.0; // 圆柱高度 [m]
+        double v0 = 0.6; // 施加电压 [V] (E = V0/L = 0.3 V/m)
         model.param().set("r1", "0.15[m]", "内芯半径");
         model.param().set("r2", "0.3[m]", "外壳外半径");
-        model.param().set("L", "1[m]", "圆柱高度");
-        model.param().set("V0", "0.3[V]", "施加电压");
+        model.param().set("L", L + "[m]", "圆柱高度");
+        model.param().set("V0", v0 + "[V]", "施加电压");
         model.param().set("sigma1", "1e6[S/m]", "内芯电导率");
         model.param().set("sigma2", "1e-8[S/m]", "外壳电导率(绝缘)");
         model.param().set("k1", "15[W/(m*K)]", "内芯热导率");
@@ -58,34 +66,20 @@ public class EcTCylinderStationary {
         model.component(comp).geom("geom1").create("cyl_out", "Cylinder");
         model.component(comp).geom("geom1").feature("cyl_out").set("r", "r2");
         model.component(comp).geom("geom1").feature("cyl_out").set("h", "L");
-        model.component(comp)
-                .geom("geom1")
-                .feature("cyl_out")
-                .set("pos", new double[] {0, 0, -0.5});
+        model.component(comp).geom("geom1").feature("cyl_out").set("pos", new double[] {0, 0, -L / 2});
         model.component(comp).geom("geom1").create("cyl_rm", "Cylinder");
         model.component(comp).geom("geom1").feature("cyl_rm").set("r", "r1");
         model.component(comp).geom("geom1").feature("cyl_rm").set("h", "L");
-        model.component(comp).geom("geom1").feature("cyl_rm").set("pos", new double[] {0, 0, -0.5});
+        model.component(comp).geom("geom1").feature("cyl_rm").set("pos", new double[] {0, 0, -L / 2});
         // 外壳 = cyl_out - cyl_rm (环形)
         model.component(comp).geom("geom1").create("diff1", "Difference");
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input")
-                .set(new String[] {"cyl_out"});
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input2")
-                .set(new String[] {"cyl_rm"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input").set(new String[] {"cyl_out"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input2").set(new String[] {"cyl_rm"});
         // 内芯 = 独立圆柱 cyl_core (r1)
         model.component(comp).geom("geom1").create("cyl_core", "Cylinder");
         model.component(comp).geom("geom1").feature("cyl_core").set("r", "r1");
         model.component(comp).geom("geom1").feature("cyl_core").set("h", "L");
-        model.component(comp)
-                .geom("geom1")
-                .feature("cyl_core")
-                .set("pos", new double[] {0, 0, -0.5});
+        model.component(comp).geom("geom1").feature("cyl_core").set("pos", new double[] {0, 0, -L / 2});
         model.component(comp).geom("geom1").run();
 
         // 域识别（确定性, 不依赖试错）:
@@ -106,22 +100,13 @@ public class EcTCylinderStationary {
                 .material("mat_core")
                 .propertyGroup("def")
                 .set("electricconductivity", new String[][] {{"sigma1"}});
-        model.component(comp)
-                .material("mat_core")
-                .propertyGroup("def")
-                .set("relpermittivity", new String[][] {{"1"}});
+        model.component(comp).material("mat_core").propertyGroup("def").set("relpermittivity", new String[][] {{"1"}});
         model.component(comp)
                 .material("mat_core")
                 .propertyGroup("def")
                 .set("thermalconductivity", new String[][] {{"k1"}});
-        model.component(comp)
-                .material("mat_core")
-                .propertyGroup("def")
-                .set("density", new String[][] {{"rho1"}});
-        model.component(comp)
-                .material("mat_core")
-                .propertyGroup("def")
-                .set("heatcapacity", new String[][] {{"Cp1"}});
+        model.component(comp).material("mat_core").propertyGroup("def").set("density", new String[][] {{"rho1"}});
+        model.component(comp).material("mat_core").propertyGroup("def").set("heatcapacity", new String[][] {{"Cp1"}});
 
         model.component(comp).material().create("mat_shell", "Common");
         model.component(comp).material("mat_shell").selection().set(new int[] {shellDom});
@@ -129,22 +114,13 @@ public class EcTCylinderStationary {
                 .material("mat_shell")
                 .propertyGroup("def")
                 .set("electricconductivity", new String[][] {{"sigma2"}});
-        model.component(comp)
-                .material("mat_shell")
-                .propertyGroup("def")
-                .set("relpermittivity", new String[][] {{"1"}});
+        model.component(comp).material("mat_shell").propertyGroup("def").set("relpermittivity", new String[][] {{"1"}});
         model.component(comp)
                 .material("mat_shell")
                 .propertyGroup("def")
                 .set("thermalconductivity", new String[][] {{"k2"}});
-        model.component(comp)
-                .material("mat_shell")
-                .propertyGroup("def")
-                .set("density", new String[][] {{"rho2"}});
-        model.component(comp)
-                .material("mat_shell")
-                .propertyGroup("def")
-                .set("heatcapacity", new String[][] {{"Cp2"}});
+        model.component(comp).material("mat_shell").propertyGroup("def").set("density", new String[][] {{"rho2"}});
+        model.component(comp).material("mat_shell").propertyGroup("def").set("heatcapacity", new String[][] {{"Cp2"}});
 
         // 电流: ConductiveMedia（默认所有域; 外壳 σ≈0 → 电流只流经内芯）
         model.component(comp).physics().create("ec", "ConductiveMedia", "geom1");
@@ -153,11 +129,11 @@ public class EcTCylinderStationary {
         model.component(comp).physics().create("ht", "HeatTransfer", "geom1");
 
         // 按坐标选面
-        int[] top = facesAtZ(gi, 0.5);
-        int[] bottom = facesAtZ(gi, -0.5);
+        int[] top = facesAtZ(gi, L / 2);
+        int[] bottom = facesAtZ(gi, -L / 2);
         int[] side = facesAtRadius(gi, 0.3);
-        requireFaces("top(z=0.5)", top);
-        requireFaces("bottom(z=-0.5)", bottom);
+        requireFaces("top(z=L/2)", top);
+        requireFaces("bottom(z=-L/2)", bottom);
         requireFaces("side(r=0.3)", side);
         System.out.println("TOP=" + java.util.Arrays.toString(top));
         System.out.println("BOTTOM=" + java.util.Arrays.toString(bottom));
@@ -174,53 +150,20 @@ public class EcTCylinderStationary {
         // 热边界: 侧面 + 顶面 + 底面 全部对流换热（无绝热）
         model.component(comp).physics("ht").create("hf_side", "HeatFluxBoundary", 2);
         model.component(comp).physics("ht").feature("hf_side").selection().set(side);
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_side")
-                .set("HeatFluxType", "ConvectiveHeatFlux");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_side")
-                .set("minput_temperature_src", "userdef");
-        model.component(comp).physics("ht").feature("hf_side").set("minput_temperature", "Tinf");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_side")
-                .set("HeatTransferCoefficientType", "UserDef");
+        model.component(comp).physics("ht").feature("hf_side").set("HeatFluxType", "ConvectiveHeatFlux");
+        model.component(comp).physics("ht").feature("hf_side").set("Text", "Tinf");
         model.component(comp).physics("ht").feature("hf_side").set("h", "h_conv");
 
         model.component(comp).physics("ht").create("hf_top", "HeatFluxBoundary", 2);
         model.component(comp).physics("ht").feature("hf_top").selection().set(top);
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_top")
-                .set("HeatFluxType", "ConvectiveHeatFlux");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_top")
-                .set("minput_temperature_src", "userdef");
-        model.component(comp).physics("ht").feature("hf_top").set("minput_temperature", "Tinf");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_top")
-                .set("HeatTransferCoefficientType", "UserDef");
+        model.component(comp).physics("ht").feature("hf_top").set("HeatFluxType", "ConvectiveHeatFlux");
+        model.component(comp).physics("ht").feature("hf_top").set("Text", "Tinf");
         model.component(comp).physics("ht").feature("hf_top").set("h", "h_conv");
 
         model.component(comp).physics("ht").create("hf_bottom", "HeatFluxBoundary", 2);
         model.component(comp).physics("ht").feature("hf_bottom").selection().set(bottom);
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_bottom")
-                .set("HeatFluxType", "ConvectiveHeatFlux");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_bottom")
-                .set("minput_temperature_src", "userdef");
-        model.component(comp).physics("ht").feature("hf_bottom").set("minput_temperature", "Tinf");
-        model.component(comp)
-                .physics("ht")
-                .feature("hf_bottom")
-                .set("HeatTransferCoefficientType", "UserDef");
+        model.component(comp).physics("ht").feature("hf_bottom").set("HeatFluxType", "ConvectiveHeatFlux");
+        model.component(comp).physics("ht").feature("hf_bottom").set("Text", "Tinf");
         model.component(comp).physics("ht").feature("hf_bottom").set("h", "h_conv");
 
         // 多物理场耦合: 焦耳热 → 传热体积热源

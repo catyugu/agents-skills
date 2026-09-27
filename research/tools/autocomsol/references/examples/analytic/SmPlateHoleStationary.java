@@ -7,10 +7,10 @@ public class SmPlateHoleStationary {
     public static void main(String[] args) throws Exception {
         Model model = ModelUtil.create("Model");
         String comp = "comp1";
-        double a = 0.05;      // 孔径 (quarter model: 圆心在原点角)
-        double W = 0.5;       // 板半宽 (quarter 模型边长), a/W=0.1 ≤ 0.2
-        double t = 0.02;      // 板厚, t/a=0.4 (薄板近似 plane stress)
-        double sigma = 1e6;   // 远端单轴应力 σ∞ (Pa), 沿 +x
+        double a = 0.05; // 孔径 (quarter model: 圆心在原点角)
+        double W = 0.5; // 板半宽 (quarter 模型边长), a/W=0.1 ≤ 0.2
+        double t = 0.02; // 板厚, t/a=0.4 (薄板近似 plane stress)
+        double sigma = 1e6; // 远端单轴应力 σ∞ (Pa), 沿 +x
         double E = 200e9, nu = 0.3;
 
         model.component().create(comp, true);
@@ -26,16 +26,8 @@ public class SmPlateHoleStationary {
         model.component(comp).geom("geom1").feature("cyl1").set("pos", new double[] {0, 0, 0});
         // 3D Difference (2D 已验证; 3D 布尔为本次新维度)
         model.component(comp).geom("geom1").create("diff1", "Difference");
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input")
-                .set(new String[] {"blk1"});
-        model.component(comp)
-                .geom("geom1")
-                .feature("diff1")
-                .selection("input2")
-                .set(new String[] {"cyl1"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input").set(new String[] {"blk1"});
+        model.component(comp).geom("geom1").feature("diff1").selection("input2").set(new String[] {"cyl1"});
         model.component(comp).geom("geom1").run();
 
         model.component(comp).physics().create("solid", "SolidMechanics", "geom1");
@@ -45,9 +37,9 @@ public class SmPlateHoleStationary {
         model.component(comp).physics("solid").feature("lemm1").set("nu", nu + "");
 
         GeomInfo gi = model.component(comp).geom("geom1");
-        int[] faceX0 = facesAtX(gi, 0.0);     // x=0 对称面
-        int[] faceY0 = facesAtY(gi, 0.0);     // y=0 对称面
-        int[] faceXW = facesAtX(gi, W);       // x=W 加载面
+        int[] faceX0 = facesAtX(gi, 0.0); // x=0 对称面
+        int[] faceY0 = facesAtY(gi, 0.0); // y=0 对称面
+        int[] faceXW = facesAtX(gi, W); // x=W 加载面
         int[] holeFaces = facesAtRadius(gi, a); // 孔面 (局部加密)
         System.out.println("X0=" + java.util.Arrays.toString(faceX0));
         System.out.println("Y0=" + java.util.Arrays.toString(faceY0));
@@ -63,17 +55,10 @@ public class SmPlateHoleStationary {
         model.component(comp).physics("solid").create("bl1", "BoundaryLoad", 2);
         model.component(comp).physics("solid").feature("bl1").selection().set(faceXW);
         model.component(comp).physics("solid").feature("bl1").set("LoadType", "ForceArea");
-        model.component(comp)
-                .physics("solid")
-                .feature("bl1")
-                .set("FperArea", new String[] {sigma + "", "0", "0"});
+        model.component(comp).physics("solid").feature("bl1").set("FperArea", new String[] {sigma + "", "0", "0"});
         // 抑制刚体运动 (z 平移等; x/y 平移与转动已被两个对称面约束)
         model.component(comp).physics("solid").create("rms1", "RigidMotionSuppression", 3);
-        model.component(comp)
-                .physics("solid")
-                .feature("rms1")
-                .selection()
-                .set(allDomains(gi));
+        model.component(comp).physics("solid").feature("rms1").selection().set(allDomains(gi));
 
         // 显式网格: FreeTet + 全局 Size + 孔面局部加密
         model.component(comp).mesh().create("mesh1");
@@ -99,8 +84,7 @@ public class SmPlateHoleStationary {
         model.result().export("data1").set("data", "dset1");
         String csvOut = args.length > 1 ? args[1] : "SmPlateHoleStationary.csv";
         model.result().export("data1").set("filename", csvOut);
-        model.result().export("data1")
-                .set("expr", new String[] {"solid.sx", "solid.sy", "solid.sxy", "solid.mises"});
+        model.result().export("data1").set("expr", new String[] {"solid.sx", "solid.sy", "solid.sxy", "solid.mises"});
         model.result().export("data1").run();
         String outPath = args.length > 0 ? args[0] : "SmPlateHoleStationary.mph";
         model.save(outPath);

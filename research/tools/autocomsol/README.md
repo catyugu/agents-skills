@@ -27,7 +27,7 @@ Clone the repository into the parent directory of your choosing, then run the lo
 - A workflow for turning a simulation requirement into a distinct Java model, batch run, export contract, and model-specific numerical checks.
 - Locally evidenced COMSOL Java API patterns for electric currents, electrostatics, heat transfer, solid mechanics, electric-thermal and electric-thermal-structural couplings, and frequency-domain electromagnetic waves (emw).
 - Deterministic 2D and 3D geometry-selection methods, so models do not depend on guessed boundary, face, or domain numbers.
-- Seventeen complete Java references split into two tiers: `examples/analytic/` (fifteen cases with analytical-solution verification) and `examples/physical/` (two cases verified by flow-runnability or physical reasonableness only), including stationary, transient, eigenfrequency, multiphysics, multi-material, complex busbar, periodic EM-wave, Revolve-geometry, Array-pattern geometry, 3D-boolean hole geometry, and nonlinear-material cases.
+- Java references split into three tiers: `examples/analytic/` (cases with analytical-solution verification), `examples/physical/` (cases verified by flow-runnability or physical reasonableness only), and `examples/demonstration/` (pure API-usage samples with no validation), including stationary, transient, eigenfrequency, multiphysics, multi-material, complex busbar, periodic EM-wave, Revolve-geometry, Array-pattern geometry, 3D-boolean hole geometry, nonlinear-material, second-order-geometry mesh-export, and field-discretization cases.
 - A validated new-API-string probe protocol (`references/api-validation-probes.md`) for confirming unverified COMSOL strings against jar listings and serialized models before committing them to a case.
 
 ## Use
@@ -48,8 +48,9 @@ autocomsol/
 ├── agents/openai.yaml       # Codex UI metadata
 └── references/
     ├── examples/
-    │   ├── analytic/        # 15 个有解析解验证的 Java 参考
-    │   └── physical/        # 2 个仅流程/物理合理性的 Java 参考
+    │   ├── analytic/        # 13 个有解析解验证的 Java 参考
+    │   ├── physical/        # 2 个仅流程/物理合理性的 Java 参考
+    │   └── demonstration/   # 1 个纯 API 用法演示 (无验证)
     ├── command-usage.md     # comsolcompile/comsolbatch usage (+ lab sweep)
     ├── case-naming.md       # Naming, tier placement, physics/materials/variables mapping
     ├── geometry-selection.md

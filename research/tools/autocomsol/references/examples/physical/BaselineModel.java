@@ -11,7 +11,6 @@ import com.comsol.model.util.ModelUtil;
  * COMSOL Multiphysics 基础（无额外模块）
  */
 public class BaselineModel {
-
     public static void main(String[] args) throws Exception {
         // 创建模型。标签 (tag) 使用稳定命名约定。
         Model model = ModelUtil.create("Model");
