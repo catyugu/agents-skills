@@ -8,8 +8,8 @@
 | `humanizer-zh`                       | 通用     | 去掉中文里的模板腔                   |
 | `qa`                                 | 通用     | 对话式 QA，边聊边把问题整理成 issue  |
 | `teach`                              | 通用     | 在本仓库语境里讲清一个新概念或新技能 |
-| `write-a-skill`                      | 通用     | 按渐进披露的结构新写一个技能         |
 | `dot-agents`                         | 通用     | 维护本仓库本身：同步、MCP、技能      |
+| `skill-creator`                      | 通用     | 从零写技能，或按真实提示词重写       |
 | `hpc-numerical-methods-fem-fvm`      | 研究     | FEM/FVM 与 HPC 开源项目速查          |
 | `autocomsol`                         | 研究     | 写、改、验 COMSOL Java 模型          |
 | `evidence-grounded-report-authoring` | 研究     | 用已验证的项目证据展开报告           |
