@@ -4,11 +4,11 @@
 
 ## 规则
 
-- 技能在 `skills/<类目>/<name>/SKILL.md`：`general/`、`research/tools/`、`research/knowledges/`、`software-development/`。目录名即技能名，`description` 写清触发场景；Codex 与 DSH 递归扫描，放对类目即可。
+- 技能在 `skills/<类目>/<name>/SKILL.md`：`general/`、`research/tools/`、`research/knowledges/`、`software-development/`。目录名即技能名，`description` 写清触发场景，放对类目即可。
 - MCP server 只写在 `mcp.json`（标准 `mcpServers` 结构）。客户端里的条目由 `agent-sync sync` 生成，不要手改。
 - 依赖只加在两处：`package.json`（JavaScript）和 `python/pyproject.toml`（Python），并且必须提交 `pnpm-lock.yaml` / `python/uv.lock`。
 - 不使用 `npm install -g`、`pip install`、不带版本号的 `npx` / `uvx`；需要什么工具就在这里加依赖，再用 `pnpm exec` / `uv run --project python --locked` 调用。
-- 文件路径不要写死机器绝对路径：`mcp.json` 里用 `${env:AGENTS_HOME}`，这个变量由 `scripts/agents.mjs` 只在 sync 进程里注入。
+- 文件路径不要写死机器绝对路径：`mcp.json` 里用 `${env:AGENTS_HOME}`，由 `scripts/agents.mjs` 注入。
 
 ## 常用命令
 
@@ -17,8 +17,7 @@ node scripts/agents.mjs sync        # 分发到各客户端
 node scripts/agents.mjs status      # 检查是否有漂移（0 干净，2 有动作）
 node scripts/agents.mjs doctor      # 环境与 Commons 体检
 node scripts/agents.mjs mcp list    # MCP server 在各客户端的状态
+node scripts/check.mjs              # 仓库与渲染结果断言
 pnpm install --frozen-lockfile      # 恢复 JavaScript 依赖
 uv sync --project python --locked   # 恢复 Python 依赖
 ```
-
-不要直接跑 `uv run --project python --locked agent-sync ...`：缺 `AGENTS_HOME` 会失败，`scripts/agents.mjs` 就是为这件事存在的。

@@ -2,7 +2,7 @@
 
 [![reproduce](https://github.com/catyugu/dot-agents/actions/workflows/reproduce.yml/badge.svg)](https://github.com/catyugu/dot-agents/actions/workflows/reproduce.yml)
 
-`~/.agents` 是一个自包含、可复现的 Git 仓库：技能（skills）、MCP servers 以及运行它们的依赖全部声明在这里，版本由 pnpm 和 uv 的锁文件固定。除 Git、pnpm、uv 和 Agent 客户端本身，不需要任何全局安装，也不改系统级开发环境。
+`~/.agents` 是一个自包含、可复现的 Git 仓库：技能、MCP servers 以及运行它们的依赖全部声明在这里，版本由 pnpm 和 uv 的锁文件固定。除 Git、pnpm、uv 和 Agent 客户端本身，不需要任何全局安装。
 
 ## 布局
 
@@ -10,11 +10,10 @@
 ~/.agents/
 ├── skills/                    自己维护的技能，允许按类目嵌套
 │   ├── general/<name>/SKILL.md
-│   ├── research/tools/<name>/SKILL.md
-│   ├── software-development/<name>/SKILL.md
-│   └── ...
+│   ├── research/{tools,knowledges}/<name>/SKILL.md
+│   └── software-development/<name>/SKILL.md
 ├── mcp.json                   MCP server 的唯一配置源（标准 mcpServers 结构）
-├── .config/agent-sync/agent-sync.toml   各客户端的差异项（agent-sync 自己的配置）
+├── .config/agent-sync/agent-sync.toml   各客户端的差异项
 ├── AGENTS.md                  共享指令，由 agent-sync 分发
 ├── package.json               JavaScript 依赖声明
 ├── pnpm-lock.yaml
@@ -28,7 +27,7 @@
 └── scripts/
     ├── agents.mjs             agent-sync 入口，变量只注入到这一个进程
     ├── bootstrap.mjs          新机器一键复现
-    └── check.mjs              仓库与渲染结果的断言，CI 与本地同一套
+    └── check.mjs              仓库与渲染结果的断言
 ```
 
 ## 新机器
@@ -47,25 +46,6 @@ node scripts\agents.mjs doctor
 node scripts\agents.mjs mcp list
 ```
 
-## 为什么要有 scripts/agents.mjs
-
-`mcp.json` 要在多台机器间共享，所以不能写死 `C:\Users\...`；MCP 客户端拉起进程时又用它自己的 cwd，相对路径不可预测。所以“仓库在哪”必须有一个答案传进去，而 agent-sync 只认 `${env:VAR}` 一种展开（`${HOME}`、`~` 都会原样留下，实测过）。
-
-这个变量由 `scripts/agents.mjs` 注入给**那一个进程**，不写进用户环境：
-
-- `AGENTS_HOME`：sync 时展开成绝对路径，写进各客户端自己的配置；
-- `XDG_CONFIG_HOME`：把 agent-sync 自己的配置（`.config/agent-sync/agent-sync.toml`）也留在仓库内。
-
-直接跑 `uv run --project python --locked agent-sync sync` 会因为没有这个变量而失败——报错点名缺哪个变量，并且一个文件都不写：
-
-```text
-error: mcp server `chrome`: ${env:AGENTS_HOME} is not set in the environment
-error: mcp server `zotero`: ${env:AGENTS_HOME} is not set in the environment
-No changes were made — see the errors above.
-```
-
-机器上剩下的仓库外状态只有被渲染的客户端配置（`agent-sync revert <agent>` 可撤）和 `~/.local/state/agent-sync/lock` 这个运行期锁文件。
-
 ## 依赖
 
 | 用途 | 声明位置 | 锁文件 | 调用方式 |
@@ -73,19 +53,17 @@ No changes were made — see the errors above.
 | JavaScript MCP server | `package.json` devDependencies | `pnpm-lock.yaml` | `node node_modules/<pkg>/<入口>` |
 | Python MCP server、agent-sync | `python/pyproject.toml` | `python/uv.lock` | `uv run --project python --locked <命令>` |
 
-运行时不用仓库自己装：Node 用客户端自带的（`engines.node` 在 `engineStrict` 下强制校验），Python 用 `python/.python-version` 指定、由 uv 按需获取。这样既没有第二个 Node，也不会让 MCP server 跑在与客户端不同的解释器上。
+运行时不用仓库自己装：Node 用客户端自带的（`engines.node` 在 `engineStrict` 下强制校验），Python 用 `python/.python-version` 指定、由 uv 按需获取。
 
-## 技能布局与分发
+## 技能
 
-技能允许按类目嵌套。要留意 agent-sync 的边界：它把 `skills/` 下的一级目录当成一个条目。本机装的 Codex 原生读 Commons，所以不下发技能链接；将来若有客户端必须靠符号链接（Claude Code 之类），它拿到的是整个类目目录，而不是单个技能，届时需要改成扁平布局或在 `scripts/` 里补一个按 SKILL.md 逐个建链的分发步骤。
+技能按类目嵌套，目录名即技能名。agent-sync 把 `skills/` 下的一级目录当成一个条目，所以给需要符号链接的客户端下发时拿到的是整个类目；那类客户端接入时需要改成扁平布局，或补一个按 SKILL.md 逐个建链的步骤。
 
-## 加一个 skill
-
-```bash
-mkdir skills/<...>/my-skill
+```powershell
+mkdir skills\general\my-skill
 ```
 
-写 `skills/<...>/my-skill/SKILL.md`，frontmatter 至少包含 `name` 和 `description`。放对类目即可，不需要额外注册。
+写 `skills\general\my-skill\SKILL.md`，frontmatter 至少包含 `name` 和 `description`。
 
 ## 加一个 MCP server
 
@@ -94,30 +72,10 @@ mkdir skills/<...>/my-skill
 - 需要密钥的用 `${env:VAR}`，token 不进仓库。
 - 客户端侧的差异项（超时、审批模式）写进 `.config/agent-sync/agent-sync.toml` 的 `[mcp.<name>.tweaks.<agent>]`，不要手改客户端配置。
 
-## 分发到哪里
-
-agent-sync 只认它注册表里的客户端，本机当前装的是 Codex：`~/.codex/AGENTS.md` 成为指向本仓库的符号链接，`~/.codex/config.toml` 里的 `mcp_servers` 由键合并维护。
-
-DSH 直接读 `~/.agents/skills`，它的两个 MCP 连接写在 profile 的 cordis patch 里（`~/.dsh/default-workspace/dsh-chrome-devtools` 与 `dsh-zotero-mcp` 的 `cordis.patch.yml`），命令指向这个仓库里的可执行文件，而不是全局安装。这两处写的是本机绝对路径，仓库搬位置时要一起改。
-
-DSH 自带的那批技能（`~/.dsh/skills` 下的 docx、pdf、xlsx 等）不由本仓库管理，它们随 DSH 的插件走，不要往这里搬。
-
-## CI
-
-`.github/workflows/reproduce.yml` 在 `ubuntu-latest`、`windows-latest`、`macos-latest` 上跑同一套验收：
-
-1. 只装 Git、pnpm 12.14.0、Node 24、uv 0.9.22（action 也逐一定到具体的 release tag），再伪造一个 `~/.codex`（agent-sync 从不创建客户端目录，没有它同步会空跑通过）；
-2. `node scripts/bootstrap.mjs`：按锁文件安装 + 首次 sync；
-3. `node scripts/agents.mjs status`：第二次 sync 必须是空跑；
-4. `node scripts/check.mjs`：技能 frontmatter、`mcp.json` 无机器路径、渲染出的客户端配置指向 checkout、指令符号链接、LF 行尾。
-
-CI 里仓库落在 runner 的 workspace，而不是 `~/.agents`，所以它顺带证明了 Commons 放在任意路径也能渲染出正确结果；`check.mjs` 断言的是渲染结果，不启动 MCP server 本身——chrome-devtools-mcp 要真实 Chrome、zotero 要桌面端，两者都不在 runner 上。
-
-这些断言本地同样能跑：`node scripts/check.mjs`。它查的是渲染结果，不启动 MCP server 本身——chrome-devtools-mcp 要真实 Chrome、zotero 要桌面端，两者都不在 runner 上。
-
 ## 不提交的东西
 
-`node_modules/`、`python/.venv/`、各客户端目录里由 sync 生成的链接与配置段、`~/.local/state/agent-sync/`。这些都是机器本地状态，重建靠锁文件。
+`node_modules/`、`python/.venv/`、各客户端目录里由 sync 生成的链接与配置段、`~/.local/state/agent-sync/`。这些是机器本地状态，重建靠锁文件。
+
 ## Windows
 
 符号链接需要开发者模式或管理员权限，否则 `agent-sync sync` 会明确提示。
