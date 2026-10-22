@@ -5,7 +5,6 @@ version: "1.1"
 author: "Agnes"
 license: "MIT"
 tags: [hpc, fem, fvm, open-source, numerical-methods]
-related_skills: [metahotspot-project]
 ---
 
 ## When to Use
@@ -89,8 +88,8 @@ Arnoldi迭代 + Givens旋转更新Hessenberg矩阵，左/右预处理可选。
 
 ## 工程实践要点
 
-1. **内存布局**：SoA优于AoS（SIMD友好），预分配 `reserve()` 避免反复malloc
-2. **避免临时对象**：`A.adjoint()*b` 而非 `A.transpose()*b`（无转置拷贝）
+1. **内存布局**：按字段批量遍历、可向量化时 SoA 优于 AoS；按单元遍历而每次要用到全部字段时 AoS 更快，先按访问模式选。预分配 `reserve()` 避免反复 malloc
+2. **避免临时对象**：Eigen 的 `A.transpose()` 与 `A.adjoint()` 都是惰性表达式，本身不拷贝；`adjoint()` 是共轭转置，复数矩阵上不能拿它替代 `transpose()`。真正要避免的是乘积落进临时矩阵，例如 `x.noalias() = A*b`
 3. **并行**：oneTBB `parallel_for(blocked_range)` 自动负载均衡；Eigen表达式自动融合
 4. **跨平台**：MSVC `/W4 /WX /permissive- /utf-8 /bigobj`；Clang `-Werror -Wall -Wextra`
 

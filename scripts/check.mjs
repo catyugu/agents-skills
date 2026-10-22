@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// What a fresh clone must satisfy on every platform, run identically on Windows,
-// macOS and Linux so CI can compare the three.
+// Repo-specific invariants that no upstream tool checks for us:
+//   - skills/ holds one directory per skill, directory name == frontmatter name
+//   - mcp.json stays portable: no machine paths, only ${env:AGENTS_HOME}
+//   - the Codex tweaks keep the browser approval prompt on
+//   - a synced client config matches all of the above (when this machine has one)
 //
-// Part 1 is repo invariants: a skills/ layout every client can discover, skill
-// frontmatter an agent can route on, an mcp.json that never carries a machine
-// path, and a tweaks file that does not quietly disable an approval prompt.
-// Part 2 checks the result of a real `node scripts/agents.mjs sync` when a
-// client config exists; a machine without one skips it instead of failing.
+// Drift between the Commons and a client is `node scripts/agents.mjs status`'s
+// job, and the MCP protocol is `scripts/mcp_probe.py`'s. This file only asserts
+// what neither of them can see.
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -14,58 +15,25 @@ import { fileURLToPath } from 'node:url'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const failures = []
-// Windows paths compare case-insensitively; the same directory reached through
-// two spellings is not a difference worth failing on.
-const samePath = (value) => (process.platform === 'win32' ? value.toLowerCase() : value)
 
 const fail = (message) => {
   failures.push(message)
   console.log(`FAIL ${message}`)
 }
 const pass = (message) => console.log(`ok   ${message}`)
+// Windows paths compare case-insensitively; two spellings of one directory are
+// not a difference worth failing on.
+const samePath = (value) => (process.platform === 'win32' ? value.toLowerCase() : value)
 
 console.log(`dot-agents at ${root}`)
 console.log(`platform ${process.platform}, node ${process.version}`)
 
-// Plain `key: value` pairs at the top level, plus their indented blocks (a
-// `metadata:` mapping is the only nesting any skill uses). Refusing anything
-// else keeps this parser honest instead of half-implementing YAML.
-function parseFrontmatter(text, label) {
-  const lines = text.replaceAll('\r\n', '\n').split('\n')
-  if (lines[0].trim() !== '---') {
-    fail(`${label}: SKILL.md does not open with ---`)
-    return null
-  }
-  const end = lines.indexOf('---', 1)
-  if (end < 0) {
-    fail(`${label}: SKILL.md frontmatter is not closed with ---`)
-    return null
-  }
-  const fields = new Map()
-  let openBlock = null
-  for (const line of lines.slice(1, end)) {
-    if (line.trim() === '') continue
-    if (/^[ \t]/.test(line)) {
-      if (openBlock === null) fail(`${label}: indented frontmatter line outside a block: ${line.trim()}`)
-      continue
-    }
-    const pair = /^([A-Za-z][\w-]*):[ \t]*(.*)$/.exec(line)
-    openBlock = null
-    if (!pair) {
-      fail(`${label}: frontmatter line is not a key: value pair: ${line}`)
-      continue
-    }
-    const [, key, raw] = pair
-    if (fields.has(key)) fail(`${label}: frontmatter repeats ${key}`)
-    fields.set(key, raw.trim().replace(/^(['"])(.*)\1$/, '$2'))
-    if (raw.trim() === '') openBlock = key
-  }
-  return fields
+const frontmatterValue = (text, key) => {
+  const match = new RegExp(`^${key}:[ \\t]*(.+)$`, 'm').exec(text)
+  return match ? match[1].trim().replace(/^(['"])(.*)\1$/, '$2') : null
 }
 
-// 1. One directory per skill. A category directory around a skill hides it from
-// clients that scan a single level, and it makes agent-sync's sync unit
-// (skills/<first level>) disagree with the skill unit.
+// 1. One directory per skill, at the depth every client scans.
 const skillsRoot = join(root, 'skills')
 const skillNames = new Map()
 let before = failures.length
@@ -82,28 +50,17 @@ for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
   }
   const text = readFileSync(file, 'utf8')
   if (text.includes('\r')) fail(`${label}: SKILL.md has CRLF line endings`)
-  const fields = parseFrontmatter(text, label)
-  if (!fields) continue
-  for (const key of ['name', 'description']) {
-    if (!fields.get(key)) fail(`${label}: frontmatter has no ${key}`)
-  }
-  const name = fields.get('name')
-  if (name && name !== entry.name) {
-    fail(`${label}: frontmatter name is "${name}", directory is "${entry.name}"`)
-  }
+  const name = frontmatterValue(text, 'name')
+  const description = frontmatterValue(text, 'description')
+  if (!name) fail(`${label}: frontmatter has no name`)
+  if (!description) fail(`${label}: frontmatter has no description`)
+  if (name && name !== entry.name) fail(`${label}: frontmatter name is "${name}"`)
   if (name) {
     if (skillNames.has(name)) fail(`${label}: skill name "${name}" is also used by ${skillNames.get(name)}`)
     else skillNames.set(name, label)
   }
 }
 if (failures.length === before) pass(`skills: ${skillNames.size} skills, one directory each, name matches the directory`)
-
-before = failures.length
-const skillIndex = readFileSync(join(root, 'docs', 'skills.md'), 'utf8')
-for (const name of skillNames.keys()) {
-  if (!skillIndex.includes(`\`${name}\``)) fail(`docs/skills.md has no row for skill "${name}"`)
-}
-if (failures.length === before) pass('docs/skills.md: every skill appears in the index')
 
 // 2. mcp.json stays portable: placeholders resolve from the wrapper, never a path.
 before = failures.length
@@ -139,9 +96,19 @@ const preApproved = /approval_mode[ \t]*=[ \t]*"approve"/
 if (preApproved.test(readFileSync(tweaksPath, 'utf8'))) {
   fail('.config/agent-sync/agent-sync.toml marks a tool "approve": Codex never prompts for it (use "prompt")')
 }
-if (failures.length === before) pass('agent-sync.toml: no tool is pre-approved, so the browser guard stays on')
+if (failures.length === before) pass('agent-sync.toml: no tool is pre-approved')
+
+// The rendered server, not the tweaks file, is what Codex actually reads.
+const section = (text, header) => {
+  const lines = text.split('\n')
+  const start = lines.indexOf(header)
+  if (start < 0) return null
+  const end = lines.findIndex((line, index) => index > start && line.startsWith('['))
+  return lines.slice(start + 1, end < 0 ? lines.length : end).join('\n')
+}
 
 // 4. The rendered client config, when this machine has one.
+before = failures.length
 const clientDir = join(homedir(), '.codex')
 const configPath = join(clientDir, 'config.toml')
 if (!existsSync(configPath)) {
@@ -150,10 +117,23 @@ if (!existsSync(configPath)) {
   const rendered = readFileSync(configPath, 'utf8')
   if (rendered.includes('${env:')) fail('rendered config still holds an unexpanded ${env:} placeholder')
   if (preApproved.test(rendered)) fail('rendered config marks a tool "approve": Codex never prompts for it')
+
   for (const name of servers) {
-    if (!rendered.includes(`[mcp_servers.${name}]`)) fail(`rendered config has no mcp_servers.${name}`)
+    const body = section(rendered, `[mcp_servers.${name}]`)
+    if (body === null) {
+      fail(`rendered config has no [mcp_servers.${name}]`)
+      continue
+    }
+    if (JSON.stringify(mcp.mcpServers[name]).includes('${env:AGENTS_HOME}') && !samePath(body).includes(samePath(root))) {
+      fail(`rendered [mcp_servers.${name}] does not point into ${root}`)
+    }
   }
-  if (!samePath(rendered).includes(samePath(root))) fail(`rendered config does not resolve paths into ${root}`)
+
+  const chrome = section(rendered, '[mcp_servers.chrome]')
+  const browserGuard = 'default_tools_approval_mode = "prompt"'
+  if (chrome !== null && !chrome.includes(browserGuard)) {
+    fail(`rendered [mcp_servers.chrome] does not set ${browserGuard}`)
+  }
 
   const instructionLink = join(clientDir, 'AGENTS.md')
   if (!existsSync(instructionLink)) {
@@ -163,7 +143,9 @@ if (!existsSync(configPath)) {
   } else if (samePath(realpathSync(instructionLink)) !== samePath(realpathSync(join(root, 'AGENTS.md')))) {
     fail('~/.codex/AGENTS.md does not point at this repo')
   }
-  pass(`client: ${servers.length} servers rendered, instructions linked into the repo`)
+}
+if (failures.length === before) {
+  pass('client: servers rendered into this repo, browser approval prompt on, instructions linked')
 }
 
 if (failures.length > 0) {

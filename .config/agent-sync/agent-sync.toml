@@ -1,20 +1,14 @@
 # Per-client knobs for the servers declared in mcp.json.
 #
-# agent-sync reads its own config from $XDG_CONFIG_HOME/agent-sync/, so the repo
-# keeps the canonical copy here and `scripts/agents.mjs` points XDG_CONFIG_HOME
-# at `.config/` for the sync process only. A bare `agent-sync` run sees neither
-# this file nor AGENTS_HOME, which is what keeps the machine clean.
+# agent-sync reads this from $XDG_CONFIG_HOME/agent-sync/; scripts/agents.mjs
+# points XDG_CONFIG_HOME at .config/ for the sync process only, so a bare
+# `agent-sync` run sees neither these tweaks nor AGENTS_HOME.
 #
 # Codex asks before every browser action: chrome-devtools-mcp drives the user's
-# real Chrome profile, where a stray click is not undoable.
+# real Chrome profile, where a stray click is not undoable. `prompt` means "ask
+# every time"; `approve` means the opposite, already approved.
 #
-# `prompt` means "ask every time". `approve` means the opposite — Codex reads it
-# as "already approved" and never prompts (AppToolApproval::Approve =>
-# requires_approval == false), which is how a per-tool table of approve entries
-# silently turned the guard off. A server-wide default also covers tools this
-# server adds later.
-#
-# This only binds Codex. Every other client keeps its own permission policy.
+# This binds Codex only; every other client keeps its own permission policy.
 
 [mcp.chrome.tweaks.codex]
 default_tools_approval_mode = "prompt"

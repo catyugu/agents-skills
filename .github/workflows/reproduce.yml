@@ -75,7 +75,7 @@ jobs:
 
       - name: Handshake with every MCP server
         shell: bash
-        run: node "$HOME/.agents/scripts/mcp-probe.mjs"
+        run: uv run --project "$HOME/.agents/python" --locked python "$HOME/.agents/scripts/mcp_probe.py"
 
       - name: Record what the Commons resolved to
         if: always()

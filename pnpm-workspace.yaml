@@ -7,5 +7,4 @@ packages:
 skills:
   dirs: []
 
-nodeLinker: hoisted
 engineStrict: true

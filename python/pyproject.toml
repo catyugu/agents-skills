@@ -5,6 +5,7 @@ description = "Project-local Python toolchain for ~/.agents: the sync engine and
 requires-python = ">=3.11"
 dependencies = [
   "agent-sync-sh==1.2.0",
+  "mcp==2.3.0",
   "zotero-mcp-server==0.15.1",
 ]
 

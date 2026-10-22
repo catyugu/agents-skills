@@ -546,12 +546,14 @@ version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "agent-sync-sh" },
+    { name = "mcp" },
     { name = "zotero-mcp-server" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "agent-sync-sh", specifier = "==1.2.0" },
+    { name = "mcp", specifier = "==2.3.0" },
     { name = "zotero-mcp-server", specifier = "==0.15.1" },
 ]
 

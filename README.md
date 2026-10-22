@@ -22,13 +22,13 @@
 ├── docs/skills.md             技能分类与新增流程
 ├── mcp.json                   MCP server 的唯一配置源（标准 mcpServers 结构）
 ├── .config/agent-sync/agent-sync.toml   各客户端的差异项
-├── AGENTS.md                  共享指令，由 agent-sync 分发
+├── AGENTS.md                  跨项目的全局指令，由 agent-sync 分发
 ├── package.json               JavaScript 依赖声明
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml
 ├── node_modules/              本地安装，不提交
 ├── python/
-│   ├── pyproject.toml         Python 依赖声明（agent-sync、Python MCP server）
+│   ├── pyproject.toml         Python 依赖声明（agent-sync、MCP SDK、Python MCP server）
 │   ├── uv.lock
 │   ├── .python-version
 │   └── .venv/                 本地环境，不提交
@@ -36,8 +36,8 @@
 └── scripts/
     ├── agents.mjs             agent-sync 入口，变量只注入到这一个进程
     ├── bootstrap.mjs          新机器一键复现
-    ├── check.mjs              仓库与渲染结果的断言
-    └── mcp-probe.mjs          逐个 MCP server 的启动与协议握手
+    ├── check.mjs              仓库特有的断言
+    └── mcp_probe.py           逐个 MCP server 的协议握手
 ```
 
 ## 新机器
@@ -54,8 +54,8 @@ node scripts/agents.mjs sync      # 分发到各客户端
 node scripts/agents.mjs status    # 检查漂移（退出码 0 干净、2 有待处理、1 出错）
 node scripts/agents.mjs doctor
 node scripts/agents.mjs mcp list
-node scripts/check.mjs            # 技能布局、frontmatter、mcp.json、渲染结果
-node scripts/mcp-probe.mjs        # 每个 MCP server 走一次 initialize + tools/list
+node scripts/check.mjs            # 技能布局、mcp.json、审批策略
+uv run --project python --locked python scripts/mcp_probe.py   # MCP 协议握手
 ```
 
 ## CI
@@ -71,20 +71,30 @@ node scripts/mcp-probe.mjs        # 每个 MCP server 走一次 initialize + too
 | JavaScript MCP server | `package.json` devDependencies | `pnpm-lock.yaml` | `node node_modules/<pkg>/<入口>` |
 | Python MCP server、agent-sync | `python/pyproject.toml` | `python/uv.lock` | `uv run --project python --locked <命令>` |
 
-运行时不用仓库自己装：Node 用客户端自带的（`engines.node` 在 `engineStrict` 下强制校验），Python 用 `python/.python-version` 指定、由 uv 按需获取。CI 固定在 Node 24、pnpm 12.14.0、uv 0.9.22 上跑；`engines.node` 只要求 `>=22 <25`，日常机器不必和 CI 完全同版本，但要用别的大版本时请改这里并让 CI 一起走。
+运行时不用仓库自己装：Node 用客户端自带的（`engines.node` 在 `engineStrict` 下强制校验），Python 用 `python/.python-version` 指定、由 uv 按需获取。CI 固定在 Node 24、pnpm 12.14.0、uv 0.9.22 上跑；`engines.node` 要求 `>=22.12.0 <25`（chrome-devtools-mcp 的下限），日常机器不必和 CI 完全同版本，但换大版本时请改这里并让 CI 一起走。
+
+## 维护规范
+
+改这个仓库时：
+
+- 依赖只加在两处：`package.json`（JavaScript）与 `python/pyproject.toml`（Python），并提交 `pnpm-lock.yaml` / `python/uv.lock`。
+- 不用 `npm install -g`、`pip install`、不带版本号的 `npx` / `uvx`；需要工具就在仓库里加依赖，用 `pnpm exec` / `uv run --project python --locked` 调用。
+- 路径不写死：`mcp.json` 用 `${env:AGENTS_HOME}`，由 `scripts/agents.mjs` 注入。
+- 技能平铺在 `skills/<name>/`（见下），MCP 只写在 `mcp.json`，删除走 `mcp remove`（见下）。
 
 ## 技能
 
-技能平铺在 `skills/<name>/` 下，一个技能一层目录，目录名即技能名，必须等于 frontmatter 的 `name`。客户端按一级目录发现技能，套一层分类目录就会让一部分客户端看不到里面的技能，也让 agent-sync 的同步单位和你定义的技能单位对不上。分类只作为文档维护，见 [`docs/skills.md`](docs/skills.md)。
+技能平铺在 `skills/<name>/` 下，一个技能一层目录，目录名即技能名，必须等于 frontmatter 的 `name`。客户端按一级目录发现技能，套一层分类目录就会让一部分客户端看不到里面的技能，也让 agent-sync 的同步单位和你定义的技能单位对不上。分类只作为导航记录在 [`docs/skills.md`](docs/skills.md)，不参与校验。
 
 ## MCP 生命周期
 
-`agent-sync` 不记录每个条目的历史所有权，所以从 `mcp.json` 手删一个 server 不会连带清掉各客户端里已经渲染出来的条目：同一份 Git 内容，长期用过的机器可能留着旧条目。删除按下面的顺序走：
+删除一个 server 用 `mcp remove`，它同时清掉 `mcp.json` 里的定义、tweaks 里的条目和各客户端渲染出来的配置：
 
 ```bash
-node scripts/agents.mjs mcp disable <name>   # 先从所有客户端撤下，定义仍留在 mcp.json
-node scripts/agents.mjs mcp remove <name>    # 再从 Commons 和所有客户端彻底删除
+node scripts/agents.mjs mcp remove <name>
 ```
+
+不要只从 `mcp.json` 里手删：agent-sync 不记录每个条目的历史所有权，手删的定义不会再被渲染，但各客户端里已经存在的条目会留在原地。想暂时停用、以后还要恢复的用 `mcp disable <name>`。
 
 只加不改的日常操作不需要这一步：`sync` 会按键合并，客户端里的其他键原样保留。
 
