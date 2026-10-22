@@ -12,7 +12,7 @@
 │   ├── software-development/<name>/SKILL.md
 │   └── ...
 ├── mcp.json                   MCP server 的唯一配置源（标准 mcpServers 结构）
-├── agent-sync.toml            各客户端的差异项（agent-sync 自己的配置，链接到 ~/.config/agent-sync/）
+├── .config/agent-sync/agent-sync.toml   各客户端的差异项（agent-sync 自己的配置）
 ├── AGENTS.md                  共享指令，由 agent-sync 分发
 ├── package.json               JavaScript 依赖声明
 ├── pnpm-lock.yaml
@@ -23,7 +23,9 @@
 │   ├── uv.lock
 │   ├── .python-version
 │   └── .venv/                 本地环境，不提交
-└── scripts/bootstrap.mjs      新机器一键复现
+└── scripts/
+    ├── agents.mjs             agent-sync 入口，变量只注入到这一个进程
+    └── bootstrap.mjs          新机器一键复现
 ```
 
 ## 新机器
@@ -33,17 +35,33 @@ git clone git@github.com:catyugu/dot-agents.git "$HOME\.agents"
 node "$HOME\.agents\scripts\bootstrap.mjs"
 ```
 
-bootstrap 依次做五件事：把 `AGENTS_HOME` 写成本机用户环境变量、`pnpm install --frozen-lockfile`、`uv sync --project python --locked`、`agent-sync sync`、`agent-sync doctor`。之后日常只需要一条命令：
+bootstrap 依次做四件事：`pnpm install --frozen-lockfile`、`uv sync --project python --locked`、`agent-sync sync`、`agent-sync doctor`。它不写任何环境变量，也不往仓库外放配置文件。之后日常都走同一个入口：
 
 ```powershell
-uv run --project python --locked agent-sync sync
+node scripts\agents.mjs sync      # 分发到各客户端
+node scripts\agents.mjs status    # 检查漂移（退出码 0 干净、2 有待处理、1 出错）
+node scripts\agents.mjs doctor
+node scripts\agents.mjs mcp list
 ```
 
-检查漂移用 `agent-sync status`（退出码 0 干净、2 有待处理、1 出错）。
+## 为什么要有 scripts/agents.mjs
 
-## 为什么要有 AGENTS_HOME
+`mcp.json` 要在多台机器间共享，所以不能写死 `C:\Users\...`；MCP 客户端拉起进程时又用它自己的 cwd，相对路径不可预测。所以“仓库在哪”必须有一个答案传进去，而 agent-sync 只认 `${env:VAR}` 一种展开（`${HOME}`、`~` 都会原样留下，实测过）。
 
-`mcp.json` 要在多台机器间共享，所以不能写死 `C:\Users\...`。agent-sync 只支持 `${env:VAR}` 一种变量展开，且只在 `sync` 那一刻解析：它把 `${env:AGENTS_HOME}` 换成运行机器的绝对路径，写进各客户端自己的配置。变量缺失时 agent-sync 直接报错并放弃全部写入，不会留下半截配置。
+这个变量由 `scripts/agents.mjs` 注入给**那一个进程**，不写进用户环境：
+
+- `AGENTS_HOME`：sync 时展开成绝对路径，写进各客户端自己的配置；
+- `XDG_CONFIG_HOME`：把 agent-sync 自己的配置（`.config/agent-sync/agent-sync.toml`）也留在仓库内。
+
+直接跑 `uv run --project python --locked agent-sync sync` 会因为没有这个变量而失败——报错点名缺哪个变量，并且一个文件都不写：
+
+```text
+error: mcp server `chrome`: ${env:AGENTS_HOME} is not set in the environment
+error: mcp server `zotero`: ${env:AGENTS_HOME} is not set in the environment
+No changes were made — see the errors above.
+```
+
+机器上剩下的仓库外状态只有被渲染的客户端配置（`agent-sync revert <agent>` 可撤）和 `~/.local/state/agent-sync/lock` 这个运行期锁文件。
 
 ## 依赖
 
@@ -71,7 +89,7 @@ mkdir skills/<...>/my-skill
 - JavaScript：`pnpm add -D <pkg>`，然后在 `mcp.json` 里写 `command: node` 加 `node_modules/<pkg>/<入口文件>`。
 - Python：`uv add --project python <pkg>`，然后写 `command: uv`、`args: ["run", "--project", "${env:AGENTS_HOME}/python", "--locked", "<可执行名>"]`。
 - 需要密钥的用 `${env:VAR}`，token 不进仓库。
-- 客户端侧的差异项（超时、审批模式）写进 `agent-sync.toml` 的 `[mcp.<name>.tweaks.<agent>]`，不要手改客户端配置。
+- 客户端侧的差异项（超时、审批模式）写进 `.config/agent-sync/agent-sync.toml` 的 `[mcp.<name>.tweaks.<agent>]`，不要手改客户端配置。
 
 ## 分发到哪里
 
@@ -84,7 +102,6 @@ DSH 自带的那批技能（`~/.dsh/skills` 下的 docx、pdf、xlsx 等）不�
 ## 不提交的东西
 
 `node_modules/`、`python/.venv/`、各客户端目录里由 sync 生成的链接与配置段、`~/.local/state/agent-sync/`。这些都是机器本地状态，重建靠锁文件。
-
 ## Windows
 
-符号链接需要开发者模式或管理员权限，否则 `agent-sync sync` 会明确提示。`AGENTS_HOME` 由 `setx` 写入用户环境变量，重开终端生效。
+符号链接需要开发者模式或管理员权限，否则 `agent-sync sync` 会明确提示。
