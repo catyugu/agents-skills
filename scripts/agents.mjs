@@ -7,6 +7,7 @@
 // outside ~/.agents:
 //   AGENTS_HOME     -> this repo, resolved into client configs at sync
 //   XDG_CONFIG_HOME -> <repo>/.config, where the tweaks file lives
+//   AGENT_SYNC_HOME -> this repo as the Commons, so nothing else is synced
 //
 // Usage: node scripts/agents.mjs [agent-sync args...]   (default: sync)
 import { spawnSync } from 'node:child_process'
@@ -24,6 +25,7 @@ const result = spawnSync('uv', args, {
   env: {
     ...process.env,
     AGENTS_HOME: root,
+    AGENT_SYNC_HOME: root,
     XDG_CONFIG_HOME: join(root, '.config'),
   },
 })
