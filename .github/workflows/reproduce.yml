@@ -4,9 +4,16 @@ name: reproduce
 # one agent client rebuilds the whole toolchain from the committed lockfiles, and
 # renders the same client config, on every platform.
 #
-# The job installs exactly what a new machine has, fakes the one thing a runner
-# cannot have (an installed client directory), then re-syncs and asserts that the
-# second sync is a no-op and that the rendered config points into the checkout.
+# The clone goes to $HOME/.agents, not into the runner's workspace, because that
+# is the path codex and friends open by themselves: a sync performed anywhere else
+# proves nothing about native skill discovery. The job then fakes the one thing a
+# runner cannot have (an installed client directory), bootstraps, and asserts that
+# the second sync is a no-op, that the repo invariants hold, and that every MCP
+# server starts and answers the protocol handshake.
+#
+# What it cannot prove: that a specific client parses what it finds. Chrome needs
+# a running Chrome and Zotero needs the Zotero desktop app, so the MCP step stops
+# at initialize + tools/list and calls no tool.
 on:
   push:
     branches: [main]
@@ -46,21 +53,31 @@ jobs:
         with:
           version: 0.9.22
 
-      # agent-sync never creates a client directory, so without this one the sync
-      # would have nothing to fan out to and would pass vacuously.
-      - name: Pretend the agent client is installed
+      # agent-sync never creates a client directory, so without one the sync would
+      # have nothing to fan out to and would pass vacuously.
+      - name: Put the repo where a client reads it
+        shell: bash
         run: |
-          node -e "require('node:fs').mkdirSync(require('node:path').join(require('node:os').homedir(), '.codex'), { recursive: true })"
+          git clone --quiet "$GITHUB_WORKSPACE" "$HOME/.agents"
+          mkdir -p "$HOME/.codex"
 
       - name: Rebuild from the lockfiles and sync
-        run: node scripts/bootstrap.mjs
+        shell: bash
+        run: node "$HOME/.agents/scripts/bootstrap.mjs"
 
       - name: Assert the second sync is a no-op
-        run: node scripts/agents.mjs status
+        shell: bash
+        run: node "$HOME/.agents/scripts/agents.mjs" status
 
       - name: Check repo invariants and the rendered config
-        run: node scripts/check.mjs
+        shell: bash
+        run: node "$HOME/.agents/scripts/check.mjs"
 
-      - name: Record what the lockfiles resolved to
+      - name: Handshake with every MCP server
+        shell: bash
+        run: node "$HOME/.agents/scripts/mcp-probe.mjs"
+
+      - name: Record what the Commons resolved to
         if: always()
-        run: node scripts/agents.mjs mcp list
+        shell: bash
+        run: node "$HOME/.agents/scripts/agents.mjs" mcp list

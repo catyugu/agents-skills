@@ -3,4 +3,5 @@ python/.venv/
 __pycache__/
 *.pyc
 .cache/
+.state/
 .DS_Store

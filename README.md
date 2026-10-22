@@ -17,10 +17,9 @@
 
 ```text
 ~/.agents/
-├── skills/                    自己维护的技能，允许按类目嵌套
-│   ├── general/<name>/SKILL.md
-│   ├── research/{tools,knowledges}/<name>/SKILL.md
-│   └── software-development/<name>/SKILL.md
+├── skills/                    技能，平铺一层，目录名即技能名
+│   └── <name>/SKILL.md
+├── docs/skills.md             技能分类与新增流程
 ├── mcp.json                   MCP server 的唯一配置源（标准 mcpServers 结构）
 ├── .config/agent-sync/agent-sync.toml   各客户端的差异项
 ├── AGENTS.md                  共享指令，由 agent-sync 分发
@@ -33,27 +32,37 @@
 │   ├── uv.lock
 │   ├── .python-version
 │   └── .venv/                 本地环境，不提交
+├── .state/                    agent-sync 的锁文件，不提交
 └── scripts/
     ├── agents.mjs             agent-sync 入口，变量只注入到这一个进程
     ├── bootstrap.mjs          新机器一键复现
-    └── check.mjs              仓库与渲染结果的断言
+    ├── check.mjs              仓库与渲染结果的断言
+    └── mcp-probe.mjs          逐个 MCP server 的启动与协议握手
 ```
 
 ## 新机器
 
-```powershell
-git clone git@github.com:catyugu/dot-agents.git "$HOME\.agents"
-node "$HOME\.agents\scripts\bootstrap.mjs"
+```bash
+git clone git@github.com:catyugu/dot-agents.git "$HOME/.agents"
+node "$HOME/.agents/scripts/bootstrap.mjs"
 ```
 
 bootstrap 依次做四件事：`pnpm install --frozen-lockfile`、`uv sync --project python --locked`、`agent-sync sync`、`agent-sync doctor`。它不写任何环境变量，也不往仓库外放配置文件。之后日常都走同一个入口：
 
-```powershell
-node scripts\agents.mjs sync      # 分发到各客户端
-node scripts\agents.mjs status    # 检查漂移（退出码 0 干净、2 有待处理、1 出错）
-node scripts\agents.mjs doctor
-node scripts\agents.mjs mcp list
+```bash
+node scripts/agents.mjs sync      # 分发到各客户端
+node scripts/agents.mjs status    # 检查漂移（退出码 0 干净、2 有待处理、1 出错）
+node scripts/agents.mjs doctor
+node scripts/agents.mjs mcp list
+node scripts/check.mjs            # 技能布局、frontmatter、mcp.json、渲染结果
+node scripts/mcp-probe.mjs        # 每个 MCP server 走一次 initialize + tools/list
 ```
+
+## CI
+
+`.github/workflows/reproduce.yml` 在 Ubuntu、Windows、macOS 上验证同一件事：把 checkout 克隆到 `$HOME/.agents`（客户端自己读的那个路径，不是 runner 的工作目录），建一个空的 `~/.codex` 假装客户端已安装，然后跑 bootstrap，再断言第二遍 `sync` 是空操作、`check.mjs` 全部通过、每个 MCP server 都能启动并答完 `initialize` 和 `tools/list`。
+
+它证明不了的是具体客户端怎么解析：runner 上没装客户端，Chrome 和 Zotero 也不是 pnpm、uv 能装的运行条件，所以 MCP 检测停在握手，不调用任何工具。
 
 ## 依赖
 
@@ -62,17 +71,22 @@ node scripts\agents.mjs mcp list
 | JavaScript MCP server | `package.json` devDependencies | `pnpm-lock.yaml` | `node node_modules/<pkg>/<入口>` |
 | Python MCP server、agent-sync | `python/pyproject.toml` | `python/uv.lock` | `uv run --project python --locked <命令>` |
 
-运行时不用仓库自己装：Node 用客户端自带的（`engines.node` 在 `engineStrict` 下强制校验），Python 用 `python/.python-version` 指定、由 uv 按需获取。
+运行时不用仓库自己装：Node 用客户端自带的（`engines.node` 在 `engineStrict` 下强制校验），Python 用 `python/.python-version` 指定、由 uv 按需获取。CI 固定在 Node 24、pnpm 12.14.0、uv 0.9.22 上跑；`engines.node` 只要求 `>=22 <25`，日常机器不必和 CI 完全同版本，但要用别的大版本时请改这里并让 CI 一起走。
 
 ## 技能
 
-技能按类目嵌套，目录名即技能名。agent-sync 把 `skills/` 下的一级目录当成一个条目，所以给需要符号链接的客户端下发时拿到的是整个类目；那类客户端接入时需要改成扁平布局，或补一个按 SKILL.md 逐个建链的步骤。
+技能平铺在 `skills/<name>/` 下，一个技能一层目录，目录名即技能名，必须等于 frontmatter 的 `name`。客户端按一级目录发现技能，套一层分类目录就会让一部分客户端看不到里面的技能，也让 agent-sync 的同步单位和你定义的技能单位对不上。分类只作为文档维护，见 [`docs/skills.md`](docs/skills.md)。
 
-```powershell
-mkdir skills\general\my-skill
+## MCP 生命周期
+
+`agent-sync` 不记录每个条目的历史所有权，所以从 `mcp.json` 手删一个 server 不会连带清掉各客户端里已经渲染出来的条目：同一份 Git 内容，长期用过的机器可能留着旧条目。删除按下面的顺序走：
+
+```bash
+node scripts/agents.mjs mcp disable <name>   # 先从所有客户端撤下，定义仍留在 mcp.json
+node scripts/agents.mjs mcp remove <name>    # 再从 Commons 和所有客户端彻底删除
 ```
 
-写 `skills\general\my-skill\SKILL.md`，frontmatter 至少包含 `name` 和 `description`。
+只加不改的日常操作不需要这一步：`sync` 会按键合并，客户端里的其他键原样保留。
 
 ## 加一个 MCP server
 
@@ -83,8 +97,14 @@ mkdir skills\general\my-skill
 
 ## 不提交的东西
 
-`node_modules/`、`python/.venv/`、各客户端目录里由 sync 生成的链接与配置段、`~/.local/state/agent-sync/`。这些是机器本地状态，重建靠锁文件。
+`node_modules/`、`python/.venv/`、`.state/`、各客户端目录里由 sync 生成的链接与配置段。这些都是机器本地状态，重建靠锁文件。
+
+agent-sync 的锁文件默认落在 `~/.local/state/agent-sync/`；`scripts/agents.mjs` 把 `XDG_STATE_HOME` 指到本仓库的 `.state/`，让工作套件在文件系统上自包含。pnpm 和 uv 的下载缓存仍然走各自默认的共享位置——那是缓存，不是装进全局环境的软件，强行给每个套件单独一份只会多占磁盘、多下载。
 
 ## Windows
 
 符号链接需要开发者模式或管理员权限，否则 `agent-sync sync` 会明确提示。
+
+## 备注
+
+本机把仓库放在 dotfiles 里、再用 `~/.agents` 符号链接指过来，所以 `doctor` 会提示 `AGENT_SYNC_HOME` 与 codex 实际读取的路径不一致。两个路径指向同一份文件，这条提示只是字面比较的结果，不是配置错误；仓库直接克隆到 `~/.agents` 时（CI 就是这么做的）不会出现。
