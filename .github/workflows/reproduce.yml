@@ -42,7 +42,8 @@ jobs:
       # agent-sync never creates a client directory, so without this one the sync
       # would have nothing to fan out to and would pass vacuously.
       - name: Pretend the agent client is installed
-        run: node -e "require('node:fs').mkdirSync(require('node:path').join(require('node:os').homedir(), '.codex'), { recursive: true })"
+        run: |
+          node -e "require('node:fs').mkdirSync(require('node:path').join(require('node:os').homedir(), '.codex'), { recursive: true })"
 
       - name: Rebuild from the lockfiles and sync
         run: node scripts/bootstrap.mjs
