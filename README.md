@@ -27,7 +27,8 @@
 │   └── .venv/                 本地环境，不提交
 └── scripts/
     ├── agents.mjs             agent-sync 入口，变量只注入到这一个进程
-    └── bootstrap.mjs          新机器一键复现
+    ├── bootstrap.mjs          新机器一键复现
+    └── check.mjs              仓库与渲染结果的断言，CI 与本地同一套
 ```
 
 ## 新机器
@@ -105,10 +106,12 @@ DSH 自带的那批技能（`~/.dsh/skills` 下的 docx、pdf、xlsx 等）不�
 
 `.github/workflows/reproduce.yml` 在 `ubuntu-latest`、`windows-latest`、`macos-latest` 上跑同一套验收：
 
-1. 只装 Git、pnpm 12.14.0、Node 24、uv，再伪造一个 `~/.codex`（agent-sync 从不创建客户端目录，没有它同步会空跑通过）；
+1. 只装 Git、pnpm 12.14.0、Node 24、uv 0.9.22（action 也逐一定到具体的 release tag），再伪造一个 `~/.codex`（agent-sync 从不创建客户端目录，没有它同步会空跑通过）；
 2. `node scripts/bootstrap.mjs`：按锁文件安装 + 首次 sync；
 3. `node scripts/agents.mjs status`：第二次 sync 必须是空跑；
 4. `node scripts/check.mjs`：技能 frontmatter、`mcp.json` 无机器路径、渲染出的客户端配置指向 checkout、指令符号链接、LF 行尾。
+
+CI 里仓库落在 runner 的 workspace，而不是 `~/.agents`，所以它顺带证明了 Commons 放在任意路径也能渲染出正确结果；`check.mjs` 断言的是渲染结果，不启动 MCP server 本身——chrome-devtools-mcp 要真实 Chrome、zotero 要桌面端，两者都不在 runner 上。
 
 这些断言本地同样能跑：`node scripts/check.mjs`。它查的是渲染结果，不启动 MCP server 本身——chrome-devtools-mcp 要真实 Chrome、zotero 要桌面端，两者都不在 runner 上。
 
