@@ -26,12 +26,16 @@ import { fileURLToPath } from 'node:url'
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const isWindows = process.platform === 'win32'
 
+function quote(token) {
+  return /[\s"]/.test(token) ? `"${token.replaceAll('"', '\\"')}"` : token
+}
+
 function run(command, args) {
-  const line = [command, ...args].join(' ')
+  // Only pnpm needs a shell on Windows, for its PATHEXT lookup of pnpm.cmd; the
+  // arguments never matter enough to risk, so build the line ourselves.
+  const line = [command, ...args].map(quote).join(' ')
   console.log(`\n$ ${line}`)
-  // No argument below contains a space, so the shell only supplies the PATHEXT
-  // lookup that pnpm.cmd needs on Windows.
-  const result = spawnSync(command, args, {
+  const result = spawnSync(line, {
     cwd: root,
     stdio: 'inherit',
     shell: true,

@@ -6,10 +6,11 @@
 
 ```text
 ~/.agents/
-├── skills/                    自己维护的技能，按类目嵌套，单一副本
+├── skills/                    自己维护的技能，允许按类目嵌套
 │   ├── general/<name>/SKILL.md
-│   ├── research/{tools,knowledges}/<name>/SKILL.md
-│   └── software-development/<name>/SKILL.md
+│   ├── research/tools/<name>/SKILL.md
+│   ├── software-development/<name>/SKILL.md
+│   ├── ...
 ├── mcp.json                   MCP server 的唯一配置源（标准 mcpServers 结构）
 ├── agent-sync.toml            各客户端的差异项（agent-sync 自己的配置，链接到 ~/.config/agent-sync/）
 ├── AGENTS.md                  共享指令，由 agent-sync 分发
@@ -55,9 +56,7 @@ uv run --project python --locked agent-sync sync
 
 ## 技能布局与分发
 
-技能按类目嵌套：`general/`（通用）、`research/`（`tools/` 工具类，`knowledges/` 领域知识）、`software-development/`。嵌套层级不影响读取：Codex 与 DSH 都递归扫描 `~/.agents/skills`，按目录名发现技能。
-
-要留意 agent-sync 的边界：它把 `skills/` 下的一级目录当成一个条目。本机装的 Codex 原生读 Commons，所以不下发技能链接；将来若有客户端必须靠符号链接（Claude Code 之类），它拿到的是整个类目目录，而不是单个技能，届时需要改成扁平布局或在 `scripts/` 里补一个按 SKILL.md 逐个建链的分发步骤。
+技能允许按类目嵌套。要留意 agent-sync 的边界：它把 `skills/` 下的一级目录当成一个条目。本机装的 Codex 原生读 Commons，所以不下发技能链接；将来若有客户端必须靠符号链接（Claude Code 之类），它拿到的是整个类目目录，而不是单个技能，届时需要改成扁平布局或在 `scripts/` 里补一个按 SKILL.md 逐个建链的分发步骤。
 
 ## 加一个 skill
 
