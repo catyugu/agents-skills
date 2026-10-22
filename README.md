@@ -10,7 +10,7 @@
 │   ├── general/<name>/SKILL.md
 │   ├── research/tools/<name>/SKILL.md
 │   ├── software-development/<name>/SKILL.md
-│   ├── ...
+│   └── ...
 ├── mcp.json                   MCP server 的唯一配置源（标准 mcpServers 结构）
 ├── agent-sync.toml            各客户端的差异项（agent-sync 自己的配置，链接到 ~/.config/agent-sync/）
 ├── AGENTS.md                  共享指令，由 agent-sync 分发
@@ -60,11 +60,11 @@ uv run --project python --locked agent-sync sync
 
 ## 加一个 skill
 
-```powershell
-mkdir skills\general\my-skill
+```bash
+mkdir skills/<...>/my-skill
 ```
 
-写 `skills\general\my-skill\SKILL.md`，frontmatter 至少包含 `name` 和 `description`。放对类目即可，不需要额外注册。
+写 `skills/<...>/my-skill/SKILL.md`，frontmatter 至少包含 `name` 和 `description`。放对类目即可，不需要额外注册。
 
 ## 加一个 MCP server
 
@@ -83,7 +83,7 @@ DSH 自带的那批技能（`~/.dsh/skills` 下的 docx、pdf、xlsx 等）不�
 
 ## 不提交的东西
 
-`node_modules/`、`python/.venv/`、`~/.config/zotero-mcp/config.json`（本地 API 授权）、各客户端目录里由 sync 生成的链接与配置段、`~/.local/state/agent-sync/`。这些都是机器本地状态，重建靠锁文件。
+`node_modules/`、`python/.venv/`、各客户端目录里由 sync 生成的链接与配置段、`~/.local/state/agent-sync/`。这些都是机器本地状态，重建靠锁文件。
 
 ## Windows
 
