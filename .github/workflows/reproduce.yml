@@ -17,6 +17,9 @@ concurrency:
   group: reproduce-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   rebuild:
     name: ${{ matrix.os }}
@@ -28,16 +31,20 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      # Base tools the repo assumes, at the versions it was tested with.
-      - uses: pnpm/action-setup@v4
+      # The base tools the repo assumes, at the versions it was tested with: the
+      # pnpm version matches packageManager, and uv is pinned so a runner cannot
+      # resolve the lockfiles with a resolver the repo has never seen.
+      - uses: pnpm/action-setup@v6
         with:
           version: 12.14.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: 0.9.22
 
       # agent-sync never creates a client directory, so without this one the sync
       # would have nothing to fan out to and would pass vacuously.
