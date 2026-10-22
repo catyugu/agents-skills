@@ -101,12 +101,8 @@ node scripts/agents.mjs mcp remove <name>
 - 路径不写死：`mcp.json` 用 `${env:AGENTS_HOME}`，由 `scripts/agents.mjs` 注入。
 - 技能源码只放 `library/`，`skills/` 是生成的，不要手改；MCP 只写在 `mcp.json`，删除走 `mcp remove`。
 
-## Windows
-
-生成视图用的是 junction（目录联接），不需要开发者模式；`agent-sync sync` 自己建符号链接时仍然需要开发者模式或管理员权限。
-
 ## 不提交
 
-`node_modules/`、`python/.venv/`、`.state/`、`skills/`，以及各客户端目录里由 sync 生成的链接与配置段。这些都是机器本地状态，重建靠锁文件。
+`node_modules/`、`python/.venv/`、`.state/`、`skills/`，以及 sync 写进各客户端目录的配置。这些都是机器本地状态，重建靠锁文件。
 
 agent-sync 的锁文件默认落在 `~/.local/state/agent-sync/`；`scripts/agents.mjs` 把 `XDG_STATE_HOME` 指到本仓库的 `.state/`，让工作套件在文件系统上自包含。pnpm 和 uv 的下载缓存仍然走各自默认的共享位置——那是缓存，不是装进全局环境的软件。

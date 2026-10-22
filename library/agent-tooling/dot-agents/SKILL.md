@@ -53,9 +53,7 @@ Client differences such as timeouts or approval policy go in `.config/agent-sync
 ## When something looks wrong
 
 - `status` reports drift that `sync` does not clear: another writer in the client config conflicts with the rendered section. `doctor` names it.
-- `doctor` warns that `AGENT_SYNC_HOME` and the client's read path differ: the repo is reached through a symlink, as in a dotfiles layout. Same files, different spelling of the path; harmless.
-- `sync` cannot create its client symlinks: on Windows that needs Developer Mode or an elevated shell. The skills view is unaffected — it uses junctions.
-- A client cannot see a skill: run `node scripts/skills.mjs --check`. A stale view names the missing link; an entry that is not a link means a name collision, which the run reports instead of overwriting.
+- A client cannot see a skill: run `node scripts/skills.mjs --check`. A stale view names the missing entry, and a name collision is reported instead of overwritten.
 
 ## Boundaries
 
