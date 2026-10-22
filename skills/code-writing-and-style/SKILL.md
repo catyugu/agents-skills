@@ -5,10 +5,6 @@ category: development
 version: "1.4"
 author: "Agnes"
 license: "MIT"
-metadata:
-  hermes:
-    tags: [coding, style, guidelines, karpathy, principles]
-    related_skills: [language-style-guide]
 ---
 
 ## When to Use

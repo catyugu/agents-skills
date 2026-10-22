@@ -5,10 +5,6 @@ version: 1.0.0
 author: 歸藏 (op7418); adapted from blader/humanizer v3.0.0 and Humanizer-zh PR 39
 license: MIT
 category: creative
-metadata:
-  hermes:
-    tags: [chinese, prose, editing, style, rewrite]
-    related_skills: [humanizer, course-content-authoring, repo-doc-rewriting]
 ---
 
 # Humanizer-zh

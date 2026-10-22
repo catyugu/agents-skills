@@ -2,12 +2,8 @@
 name: language-style-guide
 description: Apply official conventions for code style by language.
 version: "1.1"
-author: "Agnes, Hermes Agent"
+author: "catyugu"
 license: "MIT"
-metadata:
-  hermes:
-    tags: [style, style-guide, code-style, coding, formatting]
-    related_skills: [code-writing-and-style]
 ---
 
 ## When to Use
