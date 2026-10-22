@@ -1,0 +1,58 @@
+name: reproduce
+
+# The acceptance test this repo claims: a fresh clone plus Git, pnpm, uv, Node and
+# one agent client rebuilds the whole toolchain from the committed lockfiles, and
+# renders the same client config, on every platform.
+#
+# The job installs exactly what a new machine has, fakes the one thing a runner
+# cannot have (an installed client directory), then re-syncs and asserts that the
+# second sync is a no-op and that the rendered config points into the checkout.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: reproduce-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Base tools the repo assumes, at the versions it was tested with.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: astral-sh/setup-uv@v6
+
+      # agent-sync never creates a client directory, so without this one the sync
+      # would have nothing to fan out to and would pass vacuously.
+      - name: Pretend the agent client is installed
+        run: node -e "require('node:fs').mkdirSync(require('node:path').join(require('node:os').homedir(), '.codex'), { recursive: true })"
+
+      - name: Rebuild from the lockfiles and sync
+        run: node scripts/bootstrap.mjs
+
+      - name: Assert the second sync is a no-op
+        run: node scripts/agents.mjs status
+
+      - name: Check repo invariants and the rendered config
+        run: node scripts/check.mjs
+
+      - name: Record what the lockfiles resolved to
+        if: always()
+        run: node scripts/agents.mjs mcp list

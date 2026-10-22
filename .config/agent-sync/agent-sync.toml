@@ -1,8 +1,9 @@
 # Per-client knobs for the servers declared in mcp.json.
 #
-# agent-sync keeps this file outside the Commons (its own config is
-# $XDG_CONFIG_HOME/agent-sync/agent-sync.toml), so the repo owns the canonical
-# copy and `scripts/bootstrap.mjs` links it into place.
+# agent-sync reads its own config from $XDG_CONFIG_HOME/agent-sync/, so the repo
+# keeps the canonical copy here and `scripts/agents.mjs` points XDG_CONFIG_HOME
+# at `.config/` for the sync process only. A bare `agent-sync` run sees neither
+# this file nor AGENTS_HOME, which is what keeps the machine clean.
 #
 # Codex asks before every browser action: chrome-devtools-mcp drives the user's
 # real Chrome profile, where a stray click is not undoable.

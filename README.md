@@ -1,5 +1,7 @@
 # dot-agents
 
+[![reproduce](https://github.com/catyugu/dot-agents/actions/workflows/reproduce.yml/badge.svg)](https://github.com/catyugu/dot-agents/actions/workflows/reproduce.yml)
+
 `~/.agents` 是一个自包含、可复现的 Git 仓库：技能（skills）、MCP servers 以及运行它们的依赖全部声明在这里，版本由 pnpm 和 uv 的锁文件固定。除 Git、pnpm、uv 和 Agent 客户端本身，不需要任何全局安装，也不改系统级开发环境。
 
 ## 布局
@@ -98,6 +100,17 @@ agent-sync 只认它注册表里的客户端，本机当前装的是 Codex：`~/
 DSH 直接读 `~/.agents/skills`，它的两个 MCP 连接写在 profile 的 cordis patch 里（`~/.dsh/default-workspace/dsh-chrome-devtools` 与 `dsh-zotero-mcp` 的 `cordis.patch.yml`），命令指向这个仓库里的可执行文件，而不是全局安装。这两处写的是本机绝对路径，仓库搬位置时要一起改。
 
 DSH 自带的那批技能（`~/.dsh/skills` 下的 docx、pdf、xlsx 等）不由本仓库管理，它们随 DSH 的插件走，不要往这里搬。
+
+## CI
+
+`.github/workflows/reproduce.yml` 在 `ubuntu-latest`、`windows-latest`、`macos-latest` 上跑同一套验收：
+
+1. 只装 Git、pnpm 12.14.0、Node 24、uv，再伪造一个 `~/.codex`（agent-sync 从不创建客户端目录，没有它同步会空跑通过）；
+2. `node scripts/bootstrap.mjs`：按锁文件安装 + 首次 sync；
+3. `node scripts/agents.mjs status`：第二次 sync 必须是空跑；
+4. `node scripts/check.mjs`：技能 frontmatter、`mcp.json` 无机器路径、渲染出的客户端配置指向 checkout、指令符号链接、LF 行尾。
+
+这些断言本地同样能跑：`node scripts/check.mjs`。它查的是渲染结果，不启动 MCP server 本身——chrome-devtools-mcp 要真实 Chrome、zotero 要桌面端，两者都不在 runner 上。
 
 ## 不提交的东西
 
