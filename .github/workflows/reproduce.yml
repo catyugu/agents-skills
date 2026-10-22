@@ -31,18 +31,18 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       # The base tools the repo assumes, at the versions it was tested with: the
       # pnpm version matches packageManager, and uv is pinned so a runner cannot
       # resolve the lockfiles with a resolver the repo has never seen.
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v6.1.0
         with:
           version: 12.14.0
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.1
         with:
           version: 0.9.22
 
