@@ -1,12 +1,24 @@
 #!/usr/bin/env node
 // Rebuild the whole ~/.agents toolchain from the committed lockfiles.
 //
-// Everything installed here lands inside this repository. The only change made
-// outside it is the AGENTS_HOME user environment variable: mcp.json must stay
-// home-agnostic, and agent-sync resolves ${env:AGENTS_HOME} into this machine's
-// absolute path when it renders a client's config.
+// Everything installed here lands inside this repository. The only changes made
+// outside it are the two that client integration needs:
+//   - AGENTS_HOME, a user environment variable: mcp.json must stay home-agnostic,
+//     and agent-sync resolves ${env:AGENTS_HOME} into this machine's absolute path
+//     when it renders a client's config.
+//   - $XDG_CONFIG_HOME/agent-sync/agent-sync.toml, a symlink onto this repo's copy,
+//     because agent-sync keeps its own config out of the Commons.
 import { spawnSync } from 'node:child_process'
-import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  unlinkSync,
+} from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,16 +26,16 @@ import { fileURLToPath } from 'node:url'
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const isWindows = process.platform === 'win32'
 
-function run(command, args, env = {}) {
+function run(command, args) {
   const line = [command, ...args].join(' ')
   console.log(`\n$ ${line}`)
-  // Arguments here never contain spaces, so the shell only supplies the PATHEXT
+  // No argument below contains a space, so the shell only supplies the PATHEXT
   // lookup that pnpm.cmd needs on Windows.
   const result = spawnSync(command, args, {
     cwd: root,
     stdio: 'inherit',
     shell: true,
-    env: { ...process.env, AGENTS_HOME: root, ...env },
+    env: { ...process.env, AGENTS_HOME: root },
   })
   if (result.status !== 0) {
     console.error(`\nfailed: ${line}`)
@@ -33,7 +45,7 @@ function run(command, args, env = {}) {
 
 function persistAgentsHome() {
   if (process.env.AGENTS_HOME === root) {
-    console.log(`\nAGENTS_HOME already points at ${root}`)
+    console.log(`AGENTS_HOME already points at ${root}`)
     return
   }
   if (isWindows) {
@@ -42,22 +54,58 @@ function persistAgentsHome() {
     return
   }
   const marker = '# dot-agents: mcp.json renders ${env:AGENTS_HOME}'
-  const line = `export AGENTS_HOME="${root}"\n`
   for (const name of ['.profile', '.bashrc', '.zshrc']) {
     const rc = join(homedir(), name)
     if (!existsSync(rc)) continue
-    const text = readFileSync(rc, 'utf8')
-    if (text.includes(marker)) {
+    if (readFileSync(rc, 'utf8').includes(marker)) {
       console.log(`${name} already sets AGENTS_HOME`)
       continue
     }
-    appendFileSync(rc, `\n${marker}\n${line}`)
+    appendFileSync(rc, `\n${marker}\nexport AGENTS_HOME="${root}"\n`)
     console.log(`${name}: AGENTS_HOME added`)
+  }
+}
+
+function linkAgentSyncConfig() {
+  const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
+  const target = join(root, 'agent-sync.toml')
+  const link = join(configHome, 'agent-sync', 'agent-sync.toml')
+  mkdirSync(dirname(link), { recursive: true })
+
+  if (existsSync(link) || isDanglingLink(link)) {
+    if (!lstatSync(link).isSymbolicLink()) {
+      console.log(`kept ${link}: a real file there is not ours to replace`)
+      return
+    }
+    if (existsSync(link) && realpathSync(link) === realpathSync(target)) {
+      console.log(`${link} already points at this repo`)
+      return
+    }
+    unlinkSync(link)
+  }
+
+  try {
+    symlinkSync(target, link, 'file')
+    console.log(`linked ${link} -> ${target}`)
+  } catch (error) {
+    console.log(
+      `could not link ${link}: ${error.message}\n` +
+        'On Windows enable Developer Mode (Settings > System > For developers) and rerun.',
+    )
+  }
+}
+
+function isDanglingLink(path) {
+  try {
+    return lstatSync(path).isSymbolicLink()
+  } catch {
+    return false
   }
 }
 
 console.log(`dot-agents at ${root}`)
 persistAgentsHome()
+linkAgentSyncConfig()
 run('pnpm', ['install', '--frozen-lockfile'])
 run('uv', ['sync', '--project', 'python', '--locked'])
 run('uv', ['run', '--project', 'python', '--locked', 'agent-sync', 'sync'])

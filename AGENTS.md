@@ -4,7 +4,7 @@
 
 ## 规则
 
-- 技能在 `skills/<name>/SKILL.md`，扁平一层，目录名即技能名；`description` 写清触发场景。
+- 技能在 `skills/<类目>/<name>/SKILL.md`：`general/`、`research/tools/`、`research/knowledges/`、`software-development/`。目录名即技能名，`description` 写清触发场景；Codex 与 DSH 递归扫描，放对类目即可。
 - MCP server 只写在 `mcp.json`（标准 `mcpServers` 结构）。客户端里的条目由 `agent-sync sync` 生成，不要手改。
 - 依赖只加在两处：`package.json`（JavaScript）和 `python/pyproject.toml`（Python），并且必须提交 `pnpm-lock.yaml` / `python/uv.lock`。
 - 不使用 `npm install -g`、`pip install`、不带版本号的 `npx` / `uvx`；需要什么工具就在这里加依赖，再用 `pnpm exec` / `uv run --project python --locked` 调用。
