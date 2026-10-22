@@ -2,7 +2,16 @@
 
 [![reproduce](https://github.com/catyugu/dot-agents/actions/workflows/reproduce.yml/badge.svg)](https://github.com/catyugu/dot-agents/actions/workflows/reproduce.yml)
 
-`~/.agents` 是一个自包含、可复现的 Git 仓库：技能、MCP servers 以及运行它们的依赖全部声明在这里，版本由 pnpm 和 uv 的锁文件固定。除 Git、pnpm、uv 和 Agent 客户端本身，不需要任何全局安装。
+`~/.agents` 是一个自包含、可复现的 Git 仓库：技能、MCP servers 以及运行它们的依赖全部声明在这里，版本由 pnpm 和 uv 的锁文件固定。
+
+## 前置要求
+
+要求环境具备：
+
+- Git
+- node 运行时
+- pnpm
+- uv
 
 ## 布局
 
