@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "chrome": {
+      "command": "node",
+      "args": [
+        "${env:AGENTS_HOME}/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
+        "--auto-connect",
+        "--no-usage-statistics"
+      ]
+    },
+    "zotero": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${env:AGENTS_HOME}/python",
+        "--locked",
+        "zotero-mcp"
+      ],
+      "env": {
+        "ZOTERO_LOCAL": "true"
+      }
+    }
+  }
+}

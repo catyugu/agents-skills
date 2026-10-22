@@ -1,0 +1,22 @@
+# Per-client knobs for the servers declared in mcp.json.
+#
+# agent-sync keeps this file outside the Commons (its own config is
+# $XDG_CONFIG_HOME/agent-sync/agent-sync.toml), so the repo owns the canonical
+# copy and `scripts/bootstrap.mjs` links it into place.
+#
+# Codex asks before every browser action: chrome-devtools-mcp drives the user's
+# real Chrome profile, where a stray click is not undoable.
+
+[mcp.chrome.tweaks.codex.tools]
+take_snapshot = { approval_mode = "approve" }
+evaluate_script = { approval_mode = "approve" }
+new_page = { approval_mode = "approve" }
+fill = { approval_mode = "approve" }
+press_key = { approval_mode = "approve" }
+navigate_page = { approval_mode = "approve" }
+click = { approval_mode = "approve" }
+type_text = { approval_mode = "approve" }
+fill_form = { approval_mode = "approve" }
+resize_page = { approval_mode = "approve" }
+emulate = { approval_mode = "approve" }
+take_screenshot = { approval_mode = "approve" }

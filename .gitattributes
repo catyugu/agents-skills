@@ -1,0 +1,6 @@
+# Keep checked-out content byte-identical on Windows and Linux: these files are
+# read by agents on every platform, and a CRLF/LF split makes the same skill
+# differ between machines.
+* text=auto eol=lf
+*.png binary
+*.pdf binary

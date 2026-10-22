@@ -1,0 +1,11 @@
+packages:
+  - .
+
+# pnpm 12 links dependency-provided skills into agent skill directories. The
+# skills in this repo are hand-written, and ~/.agents/skills is the single copy,
+# so there is nothing to link.
+skills:
+  dirs: []
+
+nodeLinker: hoisted
+engineStrict: true
