@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 // Repo-specific invariants that no upstream tool checks for us:
-//   - skills/ holds one directory per skill, directory name == frontmatter name
+//   - library/ holds one directory per skill, directory name == frontmatter name
 //   - mcp.json stays portable: no machine paths, only ${env:AGENTS_HOME}
 //   - the Codex tweaks keep the browser approval prompt on
 //   - a synced client config matches all of the above (when this machine has one)
 //
 // Drift between the Commons and a client is `node scripts/agents.mjs status`'s
-// job, and the MCP protocol is `scripts/mcp_probe.py`'s. This file only asserts
-// what neither of them can see.
+// job, the generated `skills/` view is `node scripts/skills.mjs --check`'s, and
+// the MCP protocol is `scripts/mcp_probe.py`'s. This file only asserts what
+// neither of them can see.
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -33,34 +34,38 @@ const frontmatterValue = (text, key) => {
   return match ? match[1].trim().replace(/^(['"])(.*)\1$/, '$2') : null
 }
 
-// 1. One directory per skill, at the depth every client scans.
-const skillsRoot = join(root, 'skills')
+// 1. One directory per skill under library/, at whatever depth the categories
+//    read well, with the directory name as the skill name. `skills/` is the
+//    generated view and is checked by scripts/skills.mjs instead.
+const libraryRoot = join(root, 'library')
 const skillNames = new Map()
 let before = failures.length
-for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
-  const label = `skills/${entry.name}`
-  if (!entry.isDirectory()) {
-    fail(`${label}: not a skill directory (skills/ holds one directory per skill)`)
-    continue
-  }
-  const file = join(skillsRoot, entry.name, 'SKILL.md')
-  if (!existsSync(file)) {
-    fail(`${label}: no SKILL.md (nested categories are invisible to some clients)`)
-    continue
-  }
-  const text = readFileSync(file, 'utf8')
-  if (text.includes('\r')) fail(`${label}: SKILL.md has CRLF line endings`)
-  const name = frontmatterValue(text, 'name')
-  const description = frontmatterValue(text, 'description')
-  if (!name) fail(`${label}: frontmatter has no name`)
-  if (!description) fail(`${label}: frontmatter has no description`)
-  if (name && name !== entry.name) fail(`${label}: frontmatter name is "${name}"`)
-  if (name) {
-    if (skillNames.has(name)) fail(`${label}: skill name "${name}" is also used by ${skillNames.get(name)}`)
-    else skillNames.set(name, label)
+const scanLibrary = (directory) => {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue
+    const path = join(directory, entry.name)
+    const file = join(path, 'SKILL.md')
+    const label = relative(root, path).replaceAll('\\', '/')
+    if (!existsSync(file)) {
+      scanLibrary(path)
+      continue
+    }
+    const text = readFileSync(file, 'utf8')
+    if (text.includes('\r')) fail(`${label}: SKILL.md has CRLF line endings`)
+    const name = frontmatterValue(text, 'name')
+    const description = frontmatterValue(text, 'description')
+    if (!name) fail(`${label}: frontmatter has no name`)
+    if (!description) fail(`${label}: frontmatter has no description`)
+    if (name && name !== entry.name) fail(`${label}: frontmatter name is "${name}"`)
+    if (name) {
+      if (skillNames.has(name)) fail(`${label}: skill name "${name}" is also used by ${skillNames.get(name)}`)
+      else skillNames.set(name, label)
+    }
   }
 }
-if (failures.length === before) pass(`skills: ${skillNames.size} skills, one directory each, name matches the directory`)
+if (!existsSync(libraryRoot)) fail('library/ is missing: it is the only place a skill lives')
+else scanLibrary(libraryRoot)
+if (failures.length === before) pass(`skills: ${skillNames.size} under library/, one directory each, name matches the directory`)
 
 // 2. mcp.json stays portable: placeholders resolve from the wrapper, never a path.
 before = failures.length

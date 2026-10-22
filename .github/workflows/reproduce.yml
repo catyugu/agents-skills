@@ -73,6 +73,12 @@ jobs:
         shell: bash
         run: node "$HOME/.agents/scripts/check.mjs"
 
+      # The view is generated and uncommitted, so this proves the clone produced
+      # it: every skill under library/ must be reachable at skills/<name> as a link.
+      - name: Check the skills view is current
+        shell: bash
+        run: node "$HOME/.agents/scripts/skills.mjs" --check
+
       - name: Handshake with every MCP server
         shell: bash
         run: uv run --project "$HOME/.agents/python" --locked python "$HOME/.agents/scripts/mcp_probe.py"

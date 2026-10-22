@@ -13,8 +13,15 @@ Edit files in the repo, then:
 
 ```bash
 node scripts/check.mjs        # repo invariants: layout, frontmatter, mcp.json, approval policy
-node scripts/agents.mjs sync  # fan out to clients
+node scripts/agents.mjs sync  # rebuild the skills view, then fan out to clients
 node scripts/agents.mjs status  # 0 clean, 2 drift remains, 1 error
+```
+
+`skills.mjs` on its own rebuilds or checks the view without touching any client:
+
+```bash
+node scripts/skills.mjs           # library/ -> skills/, the flat view clients scan
+node scripts/skills.mjs --check   # 0 clean, 2 stale, 1 error (never repairs)
 ```
 
 Adding or changing an MCP server also needs a handshake, because a rendered config proves nothing about whether the server starts:
@@ -27,7 +34,8 @@ uv run --project python --locked python scripts/mcp_probe.py
 
 ## What lives where
 
-- `skills/<name>/SKILL.md` — one directory per skill, directory name equal to the frontmatter `name`. Never nest a category directory: some clients scan a single level, and agent-sync treats the first level as the unit it syncs, so a category silently hides every skill under it. Categories are navigation, recorded in `docs/skills.md`.
+- `library/<category>/<name>/SKILL.md` — the only place a skill exists, at whatever category depth reads well. The directory name must equal the frontmatter `name`, and names are unique repo-wide.
+- `skills/<name>/` — the flat view clients scan: one directory link per skill, generated from `library/` by `scripts/skills.mjs`. Never edit it by hand and never commit it; some clients stop at that single level, which is why the view is flat while the library is not.
 - `mcp.json` — the only place a server is declared, in the standard `mcpServers` shape. Paths use `${env:AGENTS_HOME}`, which `scripts/agents.mjs` expands at sync time, so nothing carries a machine path.
 - `AGENTS.md` — cross-project preferences, distributed to every client. Repo maintenance rules belong in `README.md`; writing them here makes every other project read them too.
 - `package.json` and `python/pyproject.toml` — dependencies, with their lockfiles committed. Install tools there and call them through `pnpm exec` or `uv run --project python --locked`, rather than `npm i -g`, `pip install`, or an unpinned `npx` / `uvx`.
@@ -46,8 +54,8 @@ Client differences such as timeouts or approval policy go in `.config/agent-sync
 
 - `status` reports drift that `sync` does not clear: another writer in the client config conflicts with the rendered section. `doctor` names it.
 - `doctor` warns that `AGENT_SYNC_HOME` and the client's read path differ: the repo is reached through a symlink, as in a dotfiles layout. Same files, different spelling of the path; harmless.
-- `sync` cannot create symlinks: on Windows that needs Developer Mode or an elevated shell.
-- A client cannot see a skill: the folder is one level too deep, or `check.mjs` fails for it.
+- `sync` cannot create its client symlinks: on Windows that needs Developer Mode or an elevated shell. The skills view is unaffected — it uses junctions.
+- A client cannot see a skill: run `node scripts/skills.mjs --check`. A stale view names the missing link; an entry that is not a link means a name collision, which the run reports instead of overwriting.
 
 ## Boundaries
 

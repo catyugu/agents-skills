@@ -10,6 +10,10 @@
 //   XDG_STATE_HOME  -> <repo>/.state, where agent-sync keeps its lock
 //   AGENT_SYNC_HOME -> this repo as the Commons, so nothing else is synced
 //
+// Clients read the flat `skills/` view, which is generated from `library/`, so
+// sync rebuilds it first and status checks it without touching anything. A
+// failed rebuild stops sync rather than fanning out a stale view.
+//
 // Usage: node scripts/agents.mjs [agent-sync args...]   (default: sync)
 import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
@@ -18,6 +22,16 @@ import { fileURLToPath } from 'node:url'
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const [command = 'sync', ...rest] = process.argv.slice(2)
 const args = ['run', '--project', join(root, 'python'), '--locked', 'agent-sync', command, ...rest]
+
+const views = command === 'sync' || command === 'status'
+const skills = views
+  ? spawnSync(
+      process.execPath,
+      [join(root, 'scripts', 'skills.mjs'), ...(command === 'status' ? ['--check'] : [])],
+      { cwd: root, stdio: 'inherit' },
+    ).status
+  : 0
+if (command === 'sync' && skills !== 0) process.exit(skills ?? 1)
 
 console.log(`$ agent-sync ${[command, ...rest].join(' ')}`)
 const result = spawnSync('uv', args, {
@@ -31,4 +45,5 @@ const result = spawnSync('uv', args, {
     XDG_STATE_HOME: join(root, '.state'),
   },
 })
-process.exit(result.status ?? 1)
+const status = result.status ?? 1
+process.exit(status === 0 ? (skills ?? 0) : status)
