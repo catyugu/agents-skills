@@ -75,7 +75,11 @@ mkdir skills\general\my-skill
 
 ## 分发到哪里
 
-agent-sync 只认它注册表里的客户端，本机当前装的是 Codex：`~/.codex/AGENTS.md` 成为指向本仓库的符号链接，`~/.codex/config.toml` 里的 `mcp_servers` 由键合并维护。DSH 直接读 `~/.agents/skills`；它的 MCP 连接写在 profile 的 cordis patch 里，命令指向这个仓库里的可执行文件，而不是全局安装。
+agent-sync 只认它注册表里的客户端，本机当前装的是 Codex：`~/.codex/AGENTS.md` 成为指向本仓库的符号链接，`~/.codex/config.toml` 里的 `mcp_servers` 由键合并维护。
+
+DSH 直接读 `~/.agents/skills`，它的两个 MCP 连接写在 profile 的 cordis patch 里（`~/.dsh/default-workspace/dsh-chrome-devtools` 与 `dsh-zotero-mcp` 的 `cordis.patch.yml`），命令指向这个仓库里的可执行文件，而不是全局安装。这两处写的是本机绝对路径，仓库搬位置时要一起改。
+
+DSH 自带的那批技能（`~/.dsh/skills` 下的 docx、pdf、xlsx 等）不由本仓库管理，它们随 DSH 的插件走，不要往这里搬。
 
 ## 不提交的东西
 
