@@ -548,6 +548,7 @@ dependencies = [
     { name = "agent-sync-sh" },
     { name = "mcp" },
     { name = "pyyaml" },
+    { name = "requests" },
     { name = "zotero-mcp-server" },
 ]
 
@@ -556,6 +557,7 @@ requires-dist = [
     { name = "agent-sync-sh", specifier = "==1.2.0" },
     { name = "mcp", specifier = "==2.3.0" },
     { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "requests", specifier = ">=2.34.2" },
     { name = "zotero-mcp-server", specifier = "==0.15.1" },
 ]
 
