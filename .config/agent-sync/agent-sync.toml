@@ -7,17 +7,14 @@
 #
 # Codex asks before every browser action: chrome-devtools-mcp drives the user's
 # real Chrome profile, where a stray click is not undoable.
+#
+# `prompt` means "ask every time". `approve` means the opposite — Codex reads it
+# as "already approved" and never prompts (AppToolApproval::Approve =>
+# requires_approval == false), which is how a per-tool table of approve entries
+# silently turned the guard off. A server-wide default also covers tools this
+# server adds later.
+#
+# This only binds Codex. Every other client keeps its own permission policy.
 
-[mcp.chrome.tweaks.codex.tools]
-take_snapshot = { approval_mode = "approve" }
-evaluate_script = { approval_mode = "approve" }
-new_page = { approval_mode = "approve" }
-fill = { approval_mode = "approve" }
-press_key = { approval_mode = "approve" }
-navigate_page = { approval_mode = "approve" }
-click = { approval_mode = "approve" }
-type_text = { approval_mode = "approve" }
-fill_form = { approval_mode = "approve" }
-resize_page = { approval_mode = "approve" }
-emulate = { approval_mode = "approve" }
-take_screenshot = { approval_mode = "approve" }
+[mcp.chrome.tweaks.codex]
+default_tools_approval_mode = "prompt"
