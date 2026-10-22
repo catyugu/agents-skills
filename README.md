@@ -10,5 +10,4 @@
 
 ## 说明
 
-- general/free-web-search 含 node 脚本，使用前在该目录 npm install（node_modules 已忽略）
 - 新增 skill：目录名用小写连字符，SKILL.md 的 description 写清触发场景
